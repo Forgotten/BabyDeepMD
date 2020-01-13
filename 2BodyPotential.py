@@ -32,8 +32,9 @@ data = json.load(jsonFile)
 # loading the input data from the json file
 Ncells = data["Ncells"]                  # number of cells
 Np = data["Np"]                          # number of particules per cell
-Nsamples = data["Nsamples"]              
-mu = data["mu"]
+Nsamples = data["Nsamples"]              # number of samples 
+Lcell = data["lengthCell"]               # lenght of each cell
+mu = data["mu"]                          # the parameter mu of the potential
 minDelta = data["minDelta"]
 filterNet = data["filterNet"]
 fittingNet = data["fittingNet"]
@@ -69,7 +70,7 @@ if not path.exists(dataFile):
   # TODO: encapsulate all this in a function
   pointsArray, \
   potentialArray, \
-  forcesArray  = gen_data(Ncells, Np, mu, Nsamples, minDelta)
+  forcesArray  = gen_data(Ncells, Np, mu, Nsamples, minDelta, Lcell)
   
   hf = h5py.File(dataFile, 'w') 
   
