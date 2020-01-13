@@ -35,8 +35,10 @@ Ncells = 2
 Np = 2
 Nsamples = 10000
 mu = 10
-minDelta = 0.001
+minDelta = 0.01
 Lcell = 1.0
+
+bathSize = 32
 
 dataFolder = "data/"
 dataFile = dataFolder + "data_Ncells_" + str(Ncells) + \
@@ -46,7 +48,17 @@ dataFile = dataFolder + "data_Ncells_" + str(Ncells) + \
                         "_minDelta_%.4f"%(minDelta) + \
                         "_Nsamples_" + str(Nsamples) + ".h5"
 
+# loading file (this needs to be handled using a Json file)
 loadFile = 'checkpoints/check_babyMDEnergyRecv3Body2_Ncells_1_Np_2_mu_10_minDelta_0.0010_Nsamples_10000_cycle_3.h5' 
+
+# loading file (this needs to be handled using a Json file)
+checkFolder  = "checkpoints/"
+checkFile = checkFolder + "check_babyMDEnergyRecv3Body2_Ncells_" + str(Ncells) + \
+                          "_Lcells_" + str(Lcell) + \
+                          "_Np_" + str(Np) + \
+                          "_mu_" + str(mu) + \
+                          "_minDelta_%.4f"%(minDelta) + \
+                          "_Nsamples_" + str(Nsamples)
 
 # if the file doesn't exist we create it
 if not path.exists(dataFile):
@@ -172,12 +184,12 @@ E = model(Rinput)
 model.summary()
 
 # laoding weights from accurate 2 body interaction)
-#model.load_weights(loadFile)
+model.load_weights(loadFile)
 
 
 ### optimization ##
 batchSize = 50
-epochsPerStair = 20
+epochsPerStair = 10
 
 initial_learning_rate = 0.003
 lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
@@ -215,11 +227,9 @@ x_train = (pointsArray, potentialArray)
 # train_dataset = train_dataset.shuffle(buffer_size=10000).batch(50)
 
 train_dataset = tf.data.Dataset.from_tensor_slices(x_train)
-train_dataset = train_dataset.shuffle(buffer_size=10000).batch(16)
+train_dataset = train_dataset.shuffle(buffer_size=10000).batch(bathSize)
 
-
-
-epochs = 100
+epochs = 1000
 
 # Iterate over epochs.
 for epoch in range(epochs):
