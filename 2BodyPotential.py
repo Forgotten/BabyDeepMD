@@ -9,37 +9,48 @@ import matplotlib.pyplot as plt
 import os.path
 from os import path
 import h5py
+import sys
+import json
 
 from data_gen_1d import gen_data
-from utilities import genDistInv
+from utilities import genDistInv, train_step
 from utilities import MyDenseLayer, pyramidLayer, pyramidLayerNoBias
 
+nameScript = sys.argv[0]
+
+# we are going to give all the arguments using a Json file
+nameJson = sys.argv[1]
+print("=================================================")
+print("Executing " + nameScript + " following " + nameJson)
+print("=================================================")
 
 
-# seed = 1234567891011 # fairly good seed
-# filterNet = [2, 4, 8, 16, 32]
-# fittingNet = [32, 32, 16, 16, 8, 8, 4, 4, 2, 2, 1]
+# opening Json file # TODO:write a function to manipulate all this
+jsonFile = open(nameJson) 
+data = json.load(jsonFile)   
 
-filterNet = [2, 4, 8, 16, 32]
-fittingNet = [32, 32, 32, 32, 32, 32]
-seed = 1234567891011121314
+# loading the input data from the json file
+Ncells = data["Ncells"]                  # number of cells
+Np = data["Np"]                          # number of particules per cell
+Nsamples = data["Nsamples"]              
+mu = data["mu"]
+minDelta = data["minDelta"]
+filterNet = data["filterNet"]
+fittingNet = data["fittingNet"]
+seed = data["seed"]
+batchSize = data["batchSize"]
+epochsPerStair = data["epochsPerStair"]
+learningRate = data["learningRate"]
+decayRate = data["decayRate"]
+dataFolder = data["dataFolder"]
+loadFile = data["loadFile"]
 
-# filterNet = [2, 4, 8, 16, 32, 64]
-# fittingNet = [64]
-# seed = 1234567891011121314
-
+# the ones not used yet
+potentialType = data["potentialType"]
 
 print("We are using the random seed %d"%(seed))
 tf.random.set_seed(seed)
 
-
-Ncells = 1
-Np = 2
-Nsamples = 10000
-mu = 10
-minDelta = 0.001
-
-dataFolder = "data/"
 dataFile = dataFolder + "data_Ncells_" + str(Ncells) + \
                         "_Np_" + str(Np) + \
                         "_mu_" + str(mu) + \
@@ -121,9 +132,9 @@ class DeepMDsimpleEnergy(tf.keras.Model):
     self.descriptorDim = descripDim[-1]
     # we need to use the tanh here
     self.layerPyramid   = pyramidLayer(descripDim, 
-                                             actfn = tf.nn.relu)
+                                       actfn = tf.nn.relu)
     self.layerPyramidInv  = pyramidLayer(descripDim, 
-                                             actfn = tf.nn.relu)
+                                       actfn = tf.nn.relu)
     
     # we need to use the tanh especially here
     self.fittingNetwork = pyramidLayer(fittingDim, 
@@ -173,36 +184,17 @@ model.summary()
 
 
 ### optimization ##
-batchSize = 50
-epochsPerStair = 20
-
-initial_learning_rate = 0.003
-lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-    initial_learning_rate,
-    decay_steps=(Nsamples//batchSize)*epochsPerStair,
-    decay_rate=0.90,
-    staircase=True)
-
-optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
 mse_loss_fn = tf.keras.losses.MeanSquaredError()
 
 
-@tf.function
-def train_step(model, optimizer, inputs, outputsE):
-# funtion to perform one training step
-  with tf.GradientTape() as tape:
-    # we use the model the predict the outcome
-    predE = model(inputs, training=True)
+initialLearningRate = learningRate
+lrSchedule = tf.keras.optimizers.schedules.ExponentialDecay(
+    initialLearningRate,
+    decay_steps=(Nsamples//batchSize)*epochsPerStair,
+    decay_rate=decayRate,
+    staircase=True)
 
-    # fidelity loss usin mse
-    total_loss = mse_loss_fn(predE, outputsE)
-
-  # compute the gradients of the total loss with respect to the trainable variables
-  gradients = tape.gradient(total_loss, model.trainable_variables)
-  # update the parameters of the network
-  optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-
-  return total_loss
+optimizer = tf.keras.optimizers.Adam(learning_rate=lrSchedule)
 
 loss_metric = tf.keras.metrics.Mean()
 
@@ -226,8 +218,9 @@ for epoch in range(epochs):
 
   # Iterate over the batches of the dataset.
   for step, x_batch_train in enumerate(train_dataset):
-    loss = train_step(model, optimizer,
-                      x_batch_train[0], x_batch_train[1])
+    loss = train_step(model, optimizer, mse_loss_fn,
+                      x_batch_train[0], 
+                      x_batch_train[1])
     loss_metric(loss)
 
     if step % 100 == 0:
@@ -252,7 +245,7 @@ for epoch in range(epochs):
 
   # Iterate over the batches of the dataset.
   for step, x_batch_train in enumerate(train_dataset):
-    loss = train_step(model, optimizer,
+    loss = train_step(model, optimizer, mse_loss_fn,
                       x_batch_train[0], x_batch_train[1])
     loss_metric(loss)
 
@@ -277,7 +270,7 @@ for epoch in range(epochs):
 
   # Iterate over the batches of the dataset.
   for step, x_batch_train in enumerate(train_dataset):
-    loss = train_step(model, optimizer,
+    loss = train_step(model, optimizer, mse_loss_fn,
                       x_batch_train[0], x_batch_train[1])
     loss_metric(loss)
 
@@ -302,7 +295,7 @@ for epoch in range(epochs):
 
   # Iterate over the batches of the dataset.
   for step, x_batch_train in enumerate(train_dataset):
-    loss = train_step(model, optimizer,
+    loss = train_step(model, optimizer, mse_loss_fn,
                       x_batch_train[0], x_batch_train[1])
     loss_metric(loss)
 
