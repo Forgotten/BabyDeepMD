@@ -98,6 +98,9 @@ else:
   potMean = np.mean(potentialArray)
   potStd = np.std(potentialArray)
 
+print("mean of the potential is %.8f"%(potMean))
+print("std of the potential is %.8f"%(potStd))
+
 potentialArray -= potMean
 potentialArray /= potStd
 forcesArray /= potStd
@@ -109,12 +112,24 @@ Rinput = tf.Variable(pointsArray, name="input", dtype = tf.float32)
 #the descriptor computation 
 genCoordinates = genDistInv(Rinput, Ncells, Np)
 
-av = tf.reduce_mean(genCoordinates, 
+
+if loadFile: 
+  # if we are loadin a file we need to be sure that we are 
+  # loding the correct mean and std for the inputs
+  av = data["av"]
+  std = data["std"]
+  print("loading the saved mean and std of the generilized coordinates")
+else:
+  av = tf.reduce_mean(genCoordinates, 
                     axis = 0, 
                     keepdims =True ).numpy()[0]
-std = tf.sqrt(tf.reduce_mean(tf.square(genCoordinates - av), 
+  std = tf.sqrt(tf.reduce_mean(tf.square(genCoordinates - av), 
                              axis = 0, 
                              keepdims=True)).numpy()[0]
+
+print("mean of the inputs are %.8f and %.8f"%(av[0], av[1]))
+print("std of the inputs are %.8f and %.8f"%(std[0], std[1]))
+
 
 class DeepMDsimpleEnergy(tf.keras.Model):
   """Combines the encoder and decoder into an end-to-end model for training."""
@@ -182,12 +197,6 @@ class DeepMDsimpleEnergy(tf.keras.Model):
     #Forces = -tape.gradient(Energy, inputs)
 
     return Energy#, Forces
-
-if loadFile: 
-  # if we are loadin a file we need to be sure that we are 
-  # loding the correct mean and std for the inputs
-  av = data["av"]
-  std = data["std"]
 
 ## Defining the model
 model = DeepMDsimpleEnergy(Np, Ncells, 
