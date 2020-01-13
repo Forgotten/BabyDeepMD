@@ -174,18 +174,21 @@ class DeepMDsimpleEnergy(tf.keras.Model):
 
     return Energy#, Forces
 
-
+## Defining the model
 model = DeepMDsimpleEnergy(Np, Ncells, 
                            filterNet, fittingNet, 
                             av, std)
 
+# quick run of the model to check that it is correct.
 E = model(Rinput)
 model.summary()
 
+if loadFile: 
+  print("Loading the weights the model contained in %s"(loadFile))
+  model.load_weights(loadFile)
 
 ### optimization ##
 mse_loss_fn = tf.keras.losses.MeanSquaredError()
-
 
 initialLearningRate = learningRate
 lrSchedule = tf.keras.optimizers.schedules.ExponentialDecay(
@@ -200,11 +203,8 @@ loss_metric = tf.keras.metrics.Mean()
 
 x_train = (pointsArray, potentialArray)
 
-# train_dataset = tf.data.Dataset.from_tensor_slices(x_train)
-# train_dataset = train_dataset.shuffle(buffer_size=10000).batch(50)
-
 train_dataset = tf.data.Dataset.from_tensor_slices(x_train)
-train_dataset = train_dataset.shuffle(buffer_size=10000).batch(16)
+train_dataset = train_dataset.shuffle(buffer_size=10000).batch(batchSize)
 
 
 epochs = 100
