@@ -311,7 +311,7 @@ model.save_weights(checkFile+"_cycle_3.h5")
 ##### testing ######
 pointsTest, \
 potentialTest, \
-forcesTest  = gen_data(Ncells, Np, mu, 1000)
+forcesTest  = gen_data(Ncells, Np, mu, 1000, Lcell)
 
 potentialTest -= potMean
 potentialTest /= potStd
