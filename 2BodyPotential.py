@@ -88,9 +88,17 @@ forcesArray = hf['forces'][:]
 potentialArray = hf['potential'][:]
 
 # normalization of the data
-potMean = np.mean(potentialArray)
+
+if loadFile: 
+  # if we are loading a file, the normalization needs to be 
+  # properly defined 
+  potMean = data["potMean"]
+  potStd = data["potStd"]
+else: 
+  potMean = np.mean(potentialArray)
+  potStd = np.std(potentialArray)
+
 potentialArray -= potMean
-potStd = np.std(potentialArray)
 potentialArray /= potStd
 forcesArray /= potStd
 
@@ -174,6 +182,12 @@ class DeepMDsimpleEnergy(tf.keras.Model):
     #Forces = -tape.gradient(Energy, inputs)
 
     return Energy#, Forces
+
+if loadFile: 
+  # if we are loadin a file we need to be sure that we are 
+  # loding the correct mean and std for the inputs
+  av = data["av"]
+  std = data["std"]
 
 ## Defining the model
 model = DeepMDsimpleEnergy(Np, Ncells, 
