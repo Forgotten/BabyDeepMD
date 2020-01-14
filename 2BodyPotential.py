@@ -231,7 +231,7 @@ train_dataset = tf.data.Dataset.from_tensor_slices(x_train)
 train_dataset = train_dataset.shuffle(buffer_size=10000).batch(batchSize)
 
 
-epochs = 100
+epochs = 200
 
 # Iterate over epochs.
 for epoch in range(epochs):
@@ -258,7 +258,7 @@ model.save_weights(checkFile+"_cycle_0.h5")
 train_dataset = tf.data.Dataset.from_tensor_slices(x_train)
 train_dataset = train_dataset.shuffle(buffer_size=10000).batch(32)
 
-epochs = 200
+epochs = 400
 
 # Iterate over epochs.
 for epoch in range(epochs):
@@ -283,11 +283,11 @@ model.save_weights(checkFile+"_cycle_1.h5")
 train_dataset = tf.data.Dataset.from_tensor_slices(x_train)
 train_dataset = train_dataset.shuffle(buffer_size=10000).batch(64)
 
-epochs = 400
+epochs = 800
 
 # Iterate over epochs.
 for epoch in range(epochs):
-  print('============================') 
+  print('============================', flush = True) 
   print('Start of epoch %d' % (epoch,))
 
   loss_metric.reset_states()
@@ -308,7 +308,7 @@ model.save_weights(checkFile+"_cycle_2.h5")
 train_dataset = tf.data.Dataset.from_tensor_slices(x_train)
 train_dataset = train_dataset.shuffle(buffer_size=10000).batch(128)
 
-epochs = 800
+epochs = 1600
 
 # Iterate over epochs.
 for epoch in range(epochs):
