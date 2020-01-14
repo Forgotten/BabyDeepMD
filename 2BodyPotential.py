@@ -21,7 +21,7 @@ nameScript = sys.argv[0]
 # we are going to give all the arguments using a Json file
 nameJson = sys.argv[1]
 print("=================================================")
-print("Executing " + nameScript + " following " + nameJson)
+print("Executing " + nameScript + " following " + nameJson, flush = True)
 print("=================================================")
 
 
@@ -208,7 +208,7 @@ E = model(Rinput)
 model.summary()
 
 if loadFile: 
-  print("Loading the weights the model contained in %s"(loadFile))
+  print("Loading the weights the model contained in %s"(loadFile), flush = True)
   model.load_weights(loadFile)
 
 ### optimization ##
@@ -235,7 +235,7 @@ epochs = 200
 
 # Iterate over epochs.
 for epoch in range(epochs):
-  print('============================') 
+  print('============================', flush = True) 
   print('Start of epoch %d' % (epoch,))
 
   loss_metric.reset_states()
@@ -256,13 +256,13 @@ for epoch in range(epochs):
 model.save_weights(checkFile+"_cycle_0.h5")
 
 train_dataset = tf.data.Dataset.from_tensor_slices(x_train)
-train_dataset = train_dataset.shuffle(buffer_size=10000).batch(32)
+train_dataset = train_dataset.shuffle(buffer_size=10000).batch(2*batchSize)
 
 epochs = 400
 
 # Iterate over epochs.
 for epoch in range(epochs):
-  print('============================') 
+  print('============================', flush = True)
   print('Start of epoch %d' % (epoch,))
 
   loss_metric.reset_states()
@@ -281,7 +281,7 @@ for epoch in range(epochs):
 model.save_weights(checkFile+"_cycle_1.h5")
 
 train_dataset = tf.data.Dataset.from_tensor_slices(x_train)
-train_dataset = train_dataset.shuffle(buffer_size=10000).batch(64)
+train_dataset = train_dataset.shuffle(buffer_size=10000).batch(4*batchSize)
 
 epochs = 800
 
@@ -306,13 +306,13 @@ for epoch in range(epochs):
 model.save_weights(checkFile+"_cycle_2.h5")
 
 train_dataset = tf.data.Dataset.from_tensor_slices(x_train)
-train_dataset = train_dataset.shuffle(buffer_size=10000).batch(128)
+train_dataset = train_dataset.shuffle(buffer_size=10000).batch(8*batchSize)
 
 epochs = 1600
 
 # Iterate over epochs.
 for epoch in range(epochs):
-  print('============================') 
+  print('============================', flush = True)
   print('Start of epoch %d' % (epoch,))
 
   loss_metric.reset_states()
