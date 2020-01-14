@@ -16,7 +16,7 @@ from data_gen_1d import gen_data
 from utilities import genDistInv, train_step_2
 from utilities import MyDenseLayer, pyramidLayer, pyramidLayerNoBias
 
-nameScript = sys.argv[0]
+nameScript = sys.argv[0].split('/')[-1]
 
 # we are going to give all the arguments using a Json file
 nameJson = sys.argv[1]
