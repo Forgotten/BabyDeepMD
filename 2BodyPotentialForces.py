@@ -158,13 +158,13 @@ class DeepMDsimpleEnergy(tf.keras.Model):
     self.descriptorDim = descripDim[-1]
     # we may need to use the tanh here
     self.layerPyramid   = pyramidLayer(descripDim, 
-                                       actfn = tf.nn.relu)
+                                       actfn = tf.nn.tanh)
     self.layerPyramidInv  = pyramidLayer(descripDim, 
-                                       actfn = tf.nn.relu)
+                                       actfn = tf.nn.tanh)
     
     # we may need to use the tanh especially here
     self.fittingNetwork = pyramidLayer(fittingDim, 
-                                       actfn = tf.nn.relu)
+                                       actfn = tf.nn.tanh)
     self.linfitNet      = MyDenseLayer(1)    
 
   @tf.function
@@ -235,8 +235,8 @@ train_dataset = train_dataset.shuffle(buffer_size=10000).batch(batchSize)
 
 epochs = 200
 
-weightE = 1.0
-weightF = 0.0
+weightE = 0.00001
+weightF = 1.0
 
 # Iterate over epochs.
 for epoch in range(epochs):
@@ -268,8 +268,8 @@ train_dataset = train_dataset.shuffle(buffer_size=10000).batch(2*batchSize)
 
 epochs = 400
 
-weightE = 1.0
-weightF = 0.001
+weightE = 0.0001
+weightF = 1.0
 
 # Iterate over epochs.
 for epoch in range(epochs):
@@ -299,8 +299,8 @@ train_dataset = train_dataset.shuffle(buffer_size=10000).batch(4*batchSize)
 
 epochs = 800
 
-weightE = 1.0
-weightF = 0.01
+weightE = 0.001
+weightF = 1.0
 
 # Iterate over epochs.
 for epoch in range(epochs):
@@ -330,8 +330,8 @@ train_dataset = train_dataset.shuffle(buffer_size=10000).batch(8*batchSize)
 
 epochs = 1600
 
-weightE = 1.0
-weightF = 0.1
+weightE = 0.1
+weightF = 1.0
 
 # Iterate over epochs.
 for epoch in range(epochs):
