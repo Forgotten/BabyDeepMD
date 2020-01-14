@@ -60,6 +60,7 @@ dataFile = dataFolder + "data_Ncells_" + str(Ncells) + \
 
 checkFolder  = "checkpoints/"
 checkFile = checkFolder + "checkpoint_" + nameScript + \
+                        + "_Json_" + jsonFile + \
                         "_Ncells_" + str(Ncells) + \
                         "_Np_" + str(Np) + \
                         "_mu_" + str(mu) + \
