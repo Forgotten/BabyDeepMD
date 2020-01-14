@@ -233,6 +233,7 @@ class pyramidLayerNoBias(tf.keras.layers.Layer):
   def call(self, input):
     x = self.actfn(tf.matmul(input, self.kernel[0]))
     for k, ker in enumerate(self.kernel[1:]):
+      # if two layers hav ethe same dimension we use a resnet block
       if self.num_outputs[k] == self.num_outputs[k+1]:
         x += self.actfn(tf.matmul(x, ker))
       else :
@@ -248,6 +249,32 @@ def train_step(model, optimizer, loss, inputs, outputsE):
 
     # fidelity loss usin mse
     total_loss = loss(predE, outputsE)
+
+  # compute the gradients of the total loss with respect to the trainable variables
+  gradients = tape.gradient(total_loss, model.trainable_variables)
+  # update the parameters of the network
+  optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+
+  return total_loss
+
+@tf.function
+def train_step_2(model, optimizer, loss,
+               inputs, outputsE, outputsF, 
+               weightE, weightF):
+# funtion to perform one training step when predicting both the
+# potential and the forces
+  with tf.GradientTape() as tape:
+    # we use the model the predict the outcome
+    predE, predF = model(inputs, training=True)
+
+    # fidelity loss usin mse
+    lossE = loss(predE, outputsE)
+    lossF = loss(predF, outputsF)/outputsF.shape[-1]
+
+    if weightF > 0.0:
+      total_loss = weightE*lossE + weightF*lossF
+    else: 
+      total_loss = weightE*lossE 
 
   # compute the gradients of the total loss with respect to the trainable variables
   gradients = tape.gradient(total_loss, model.trainable_variables)
