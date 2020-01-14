@@ -60,12 +60,12 @@ dataFile = dataFolder + "data_Ncells_" + str(Ncells) + \
 
 checkFolder  = "checkpoints/"
 checkFile = checkFolder + "checkpoint_" + nameScript + \
-                        + "_Json_" + jsonFile + \
-                        "_Ncells_" + str(Ncells) + \
-                        "_Np_" + str(Np) + \
-                        "_mu_" + str(mu) + \
-                        "_minDelta_%.4f"%(minDelta) + \
-                        "_Nsamples_" + str(Nsamples)
+                          "_Json_" + nameJson + \
+                          "_Ncells_" + str(Ncells) + \
+                          "_Np_" + str(Np) + \
+                          "_mu_" + str(mu) + \
+                          "_minDelta_%.4f"%(minDelta) + \
+                          "_Nsamples_" + str(Nsamples)
 
 # if the file doesn't exist we create it
 if not path.exists(dataFile):
