@@ -59,7 +59,8 @@ dataFile = dataFolder + "data_Ncells_" + str(Ncells) + \
                         "_Nsamples_" + str(Nsamples) + ".h5"
 
 checkFolder  = "checkpoints/"
-checkFile = checkFolder + "check_babyMDEnergyRecv3Body2_Ncells_" + str(Ncells) + \
+checkFile = checkFolder + "checkpoint_" + nameScript + \
+                        "_Ncells_" + str(Ncells) + \
                         "_Np_" + str(Np) + \
                         "_mu_" + str(mu) + \
                         "_minDelta_%.4f"%(minDelta) + \
