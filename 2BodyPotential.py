@@ -255,6 +255,7 @@ for epoch in range(epochs):
   print('epoch %s: mean loss = %s' % (epoch, str(loss_metric.result().numpy())))
 
 
+print("saving the weights")
 model.save_weights(checkFile+"_cycle_0.h5")
 
 train_dataset = tf.data.Dataset.from_tensor_slices(x_train)
@@ -280,6 +281,7 @@ for epoch in range(epochs):
 
   print('epoch %s: mean loss = %s' % (epoch, str(loss_metric.result().numpy())))
 
+print("saving the weights")
 model.save_weights(checkFile+"_cycle_1.h5")
 
 train_dataset = tf.data.Dataset.from_tensor_slices(x_train)
@@ -305,6 +307,7 @@ for epoch in range(epochs):
 
   print('epoch %s: mean loss = %s' % (epoch, str(loss_metric.result().numpy())))
 
+print("saving the weights")
 model.save_weights(checkFile+"_cycle_2.h5")
 
 train_dataset = tf.data.Dataset.from_tensor_slices(x_train)
@@ -330,13 +333,14 @@ for epoch in range(epochs):
 
   print('epoch %s: mean loss = %s' % (epoch, str(loss_metric.result().numpy())))
 
+print("saving the weights")
 model.save_weights(checkFile+"_cycle_3.h5")
 
 
 ##### testing ######
 pointsTest, \
 potentialTest, \
-forcesTest  = gen_data(Ncells, Np, mu, 1000, Lcell)
+forcesTest  = gen_data(Ncells, Np, mu, 1000, minDelta, Lcell)
 
 potentialTest -= potMean
 potentialTest /= potStd
@@ -346,30 +350,30 @@ potPred = model(pointsTest)
 err = tf.sqrt(tf.reduce_sum(tf.square(potPred - potentialTest)))/tf.sqrt(tf.reduce_sum(tf.square(potPred)))
 print(str(err.numpy()))
 
-# # ################# Testing each step inside the model#####
-with tf.GradientTape() as tape:
-  # we watch the inputs 
+# # # ################# Testing each step inside the model#####
+# with tf.GradientTape() as tape:
+#   # we watch the inputs 
 
-  tape.watch(Rinput)
-  # (Nsamples, Ncells*Np)
-  # in this case we are only considering the distances
-  genCoordinates = genDistInv(Rinput, model.Ncells, model.Np)
-  # (Nsamples*Ncells*Np*(3*Np - 1), 2)
-  L1   = model.layerPyramid(genCoordinates[:,1:])*genCoordinates[:,1:]
-  # (Nsamples*Ncells*Np*(3*Np - 1), descriptorDim)
-  L2   = model.layerPyramidInv(genCoordinates[:,0:1])*genCoordinates[:,1:]
-  # (Nsamples*Ncells*Np*(3*Np - 1), descriptorDim)
-  LL = tf.concat([L1, L2], axis = 1)
-  # (Nsamples*Ncells*Np*(3*Np - 1), 2*descriptorDim)
-  Dtemp = tf.reshape(LL, (-1, 3*model.Np-1, 
-                          2*model.descriptorDim ))
-  # (Nsamples*Ncells*Np, (3*Np - 1), descriptorDim)
-  D = tf.reduce_sum(Dtemp, axis = 1)
-  # (Nsamples*Ncells*Np, descriptorDim)
+#   tape.watch(Rinput)
+#   # (Nsamples, Ncells*Np)
+#   # in this case we are only considering the distances
+#   genCoordinates = genDistInv(Rinput, model.Ncells, model.Np)
+#   # (Nsamples*Ncells*Np*(3*Np - 1), 2)
+#   L1   = model.layerPyramid(genCoordinates[:,1:])*genCoordinates[:,1:]
+#   # (Nsamples*Ncells*Np*(3*Np - 1), descriptorDim)
+#   L2   = model.layerPyramidInv(genCoordinates[:,0:1])*genCoordinates[:,1:]
+#   # (Nsamples*Ncells*Np*(3*Np - 1), descriptorDim)
+#   LL = tf.concat([L1, L2], axis = 1)
+#   # (Nsamples*Ncells*Np*(3*Np - 1), 2*descriptorDim)
+#   Dtemp = tf.reshape(LL, (-1, 3*model.Np-1, 
+#                           2*model.descriptorDim ))
+#   # (Nsamples*Ncells*Np, (3*Np - 1), descriptorDim)
+#   D = tf.reduce_sum(Dtemp, axis = 1)
+#   # (Nsamples*Ncells*Np, descriptorDim)
 
-  F2 = model.fittingNetwork(D)
-  F = model.linfitNet(F2)
+#   F2 = model.fittingNetwork(D)
+#   F = model.linfitNet(F2)
 
-  Energy = tf.reduce_sum(tf.reshape(F, (-1, model.Ncells*model.Np)),
-                          keepdims = True, axis = 1)
+#   Energy = tf.reduce_sum(tf.reshape(F, (-1, model.Ncells*model.Np)),
+#                           keepdims = True, axis = 1)
 
