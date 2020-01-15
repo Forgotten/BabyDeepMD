@@ -14,6 +14,7 @@ import json
 
 from data_gen_1d import gen_data
 from utilities import genDistInv, train_step_2
+from utilities import computeWeight, computeNumStairs, computeLimitWeights
 from utilities import MyDenseLayer, pyramidLayer, pyramidLayerNoBias
 
 nameScript = sys.argv[0].split('/')[-1]
@@ -46,6 +47,9 @@ decayRate = data["decayRate"]
 dataFolder = data["dataFolder"]
 loadFile = data["loadFile"]
 Nepochs = data["numberEpoch"]
+
+weightFArray = data["weightF"]        # [initW, endW]
+weightEArray = data["weightE"]        # [initW, endW]
 
 # the ones not used yet
 potentialType = data["potentialType"]
@@ -246,9 +250,23 @@ lrSchedule = tf.keras.optimizers.schedules.ExponentialDecay(
              decay_rate=decayRate,
              staircase=True)
 
+# computing the number of stairs to compute the terminal weights
+numStairs = computeNumStairs(Nepochs, batchSizeArray, 
+                             Nsamples, epochsPerStair)
+
+# computing the weights
+weightEInit, weightELimit = computeLimitWeights(weightEArray, 
+                                                decayRate, 
+                                                numStairs)
+weightFInit, weightFLimit = computeLimitWeights(weightFArray, 
+                                                decayRate, 
+                                                numStairs)
+
+
 optimizer = tf.keras.optimizers.Adam(learning_rate=lrSchedule)
 
 loss_metric = tf.keras.metrics.Mean()
+
 
 for cycle, (epochs, batchSizeL) in enumerate(zip(Nepochs, batchSizeArray)):
 
@@ -258,8 +276,6 @@ for cycle, (epochs, batchSizeL) in enumerate(zip(Nepochs, batchSizeArray)):
   print('Batch size in this cycle: %d'%(batchSizeL,))
 
 # we need to modify this one later
-  weightE = 0.00001*(cycle**3)
-  weightF = 1.0
 
   x_train = (pointsArray, potentialArray, forcesArray)
 
@@ -275,11 +291,19 @@ for cycle, (epochs, batchSizeL) in enumerate(zip(Nepochs, batchSizeArray)):
   
     # Iterate over the batches of the dataset.
     for step, x_batch_train in enumerate(train_dataset):
+
+      lrDecay = optimizer._decayed_lr("float32").numpy()
+
+      weightE = computeWeight(weightEInit, weightELimit,
+                              lrDecay, learningRate)
+      weightF = computeWeight(weightFInit, weightFLimit,
+                              lrDecay, learningRate)
+
       loss = train_step_2(model, optimizer, mse_loss_fn,
-                        x_batch_train[0], 
-                        x_batch_train[1], 
-                        x_batch_train[2], 
-                        weightE, weightF)
+                          x_batch_train[0],  # points 
+                          x_batch_train[1],  # potential
+                          x_batch_train[2],  # forces
+                          weightE, weightF)
       loss_metric(loss)
   
       if step % 100 == 0:
