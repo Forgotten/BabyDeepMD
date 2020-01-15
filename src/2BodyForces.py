@@ -45,6 +45,7 @@ learningRate = data["learningRate"]
 decayRate = data["decayRate"]
 dataFolder = data["dataFolder"]
 loadFile = data["loadFile"]
+Nepochs = data["numberEpoch"]
 
 # the ones not used yet
 potentialType = data["potentialType"]
@@ -209,152 +210,91 @@ model = DeepMDsimpleEnergy(Np, Ncells,
 E, F = model(Rinput)
 model.summary()
 
+# Create checkpointing directory if necessary
+if not os.path.exists(checkFolder):
+    os.mkdir(checkFolder)
+    print("Directory " , checkFolder ,  " Created ")
+else:    
+    print("Directory " , checkFolder ,  " already exists :)")
+
+## in the case we need to load an older saved model
 if loadFile: 
   print("Loading the weights the model contained in %s"(loadFile), flush = True)
   model.load_weights(loadFile)
 
-### optimization ##
+## We use a decent training or a custom one if necessary
+if type(Nepochs) is not list:
+  Nepochs = [200, 400, 800, 1600]
+  #batchSizeArray = map(lambda x: x*batchSize, [1, 2, 4, 8]) 
+  batchSizeArray = [batchSize*2**i for i in range(0,4)]  
+else:  
+  assert len(Nepochs) == len(batchSize)
+  batchSizeArray = batchSize
+
+print("Training cycles in number of epochs")
+print(Nepochs)
+print("Training batch sizes for each cycle")
+print(batchSizeArray)
+
+### optimization parameters ##
 mse_loss_fn = tf.keras.losses.MeanSquaredError()
 
 initialLearningRate = learningRate
 lrSchedule = tf.keras.optimizers.schedules.ExponentialDecay(
-    initialLearningRate,
-    decay_steps=(Nsamples//batchSize)*epochsPerStair,
-    decay_rate=decayRate,
-    staircase=True)
+             initialLearningRate,
+             decay_steps=(Nsamples//batchSizeArray[0])*epochsPerStair,
+             decay_rate=decayRate,
+             staircase=True)
 
 optimizer = tf.keras.optimizers.Adam(learning_rate=lrSchedule)
 
 loss_metric = tf.keras.metrics.Mean()
 
-x_train = (pointsArray, potentialArray, forcesArray)
+for cycle, (epochs, batchSizeL) in enumerate(zip(Nepochs, batchSizeArray)):
 
-train_dataset = tf.data.Dataset.from_tensor_slices(x_train)
-train_dataset = train_dataset.shuffle(buffer_size=10000).batch(batchSize)
+  print('++++++++++++++++++++++++++++++', flush = True) 
+  print('Start of cycle %d' % (cycle,))
+  print('Total number of epochs in this cycle: %d'%(epochs,))
+  print('Batch size in this cycle: %d'%(batchSizeL,))
 
+# we need to modify this one later
+  weightE = 0.0
+  weightF = 1.0
 
-epochs = 200
+  x_train = (pointsArray, potentialArray, forcesArray)
 
-weightE = 0.0000
-weightF = 1.0
+  train_dataset = tf.data.Dataset.from_tensor_slices(x_train)
+  train_dataset = train_dataset.shuffle(buffer_size=10000).batch(batchSizeL)
 
-# Iterate over epochs.
-for epoch in range(epochs):
-  print('============================', flush = True) 
-  print('Start of epoch %d' % (epoch,))
+  # Iterate over epochs.
+  for epoch in range(epochs):
+    print('============================', flush = True) 
+    print('Start of epoch %d' % (epoch,))
+  
+    loss_metric.reset_states()
+  
+    # Iterate over the batches of the dataset.
+    for step, x_batch_train in enumerate(train_dataset):
+      loss = train_step_2(model, optimizer, mse_loss_fn,
+                        x_batch_train[0], 
+                        x_batch_train[1], 
+                        x_batch_train[2], 
+                        weightE, weightF)
+      loss_metric(loss)
+  
+      if step % 100 == 0:
+        print('step %s: mean loss = %s' % (step, str(loss_metric.result().numpy())))
 
-  loss_metric.reset_states()
+    # mean loss saved in the metric
+    meanLossStr = str(loss_metric.result().numpy())
+    # learning rate using the decay 
+    lrStr = str(optimizer._decayed_lr('float32').numpy())
+    print('epoch %s: mean loss = %s  learning rate = %s'%(epoch,
+                                                          meanLossStr,
+                                                          lrStr))
 
-  # Iterate over the batches of the dataset.
-  for step, x_batch_train in enumerate(train_dataset):
-    loss = train_step_2(model, optimizer, mse_loss_fn,
-                      x_batch_train[0], 
-                      x_batch_train[1], 
-                      x_batch_train[2], 
-                      weightE, weightF)
-    loss_metric(loss)
-
-    if step % 100 == 0:
-      print('step %s: mean loss = %s' % (step, str(loss_metric.result().numpy())))
-
-  print('epoch %s: mean loss = %s' % (epoch, str(loss_metric.result().numpy())))
-
-
-print("saving the weights")
-model.save_weights(checkFile+"_cycle_0.h5")
-
-train_dataset = tf.data.Dataset.from_tensor_slices(x_train)
-train_dataset = train_dataset.shuffle(buffer_size=10000).batch(2*batchSize)
-
-epochs = 400
-
-weightE = 0.000
-weightF = 1.0
-
-# Iterate over epochs.
-for epoch in range(epochs):
-  print('============================', flush = True)
-  print('Start of epoch %d' % (epoch,))
-
-  loss_metric.reset_states()
-
-  # Iterate over the batches of the dataset.
-  for step, x_batch_train in enumerate(train_dataset):
-    loss = train_step_2(model, optimizer, mse_loss_fn,
-                      x_batch_train[0], x_batch_train[1], 
-                      x_batch_train[2], 
-                      weightE, weightF)
-    loss_metric(loss)
-
-    if step % 100 == 0:
-      print('step %s: mean loss = %s' % (step, str(loss_metric.result().numpy())))
-
-  print('epoch %s: mean loss = %s' % (epoch, str(loss_metric.result().numpy())))
-
-print("saving the weights")
-model.save_weights(checkFile+"_cycle_1.h5")
-
-train_dataset = tf.data.Dataset.from_tensor_slices(x_train)
-train_dataset = train_dataset.shuffle(buffer_size=10000).batch(4*batchSize)
-
-epochs = 800
-
-weightE = 0.0
-weightF = 1.0
-
-# Iterate over epochs.
-for epoch in range(epochs):
-  print('============================', flush = True) 
-  print('Start of epoch %d' % (epoch,))
-
-  loss_metric.reset_states()
-
-  # Iterate over the batches of the dataset.
-  for step, x_batch_train in enumerate(train_dataset):
-    loss = train_step_2(model, optimizer, mse_loss_fn,
-                      x_batch_train[0], x_batch_train[1], 
-                      x_batch_train[2], 
-                      weightE, weightF)
-    loss_metric(loss)
-
-    if step % 100 == 0:
-      print('step %s: mean loss = %s' % (step, str(loss_metric.result().numpy())))
-
-  print('epoch %s: mean loss = %s' % (epoch, str(loss_metric.result().numpy())))
-
-print("saving the weights")
-model.save_weights(checkFile+"_cycle_2.h5")
-
-train_dataset = tf.data.Dataset.from_tensor_slices(x_train)
-train_dataset = train_dataset.shuffle(buffer_size=10000).batch(8*batchSize)
-
-epochs = 1600
-
-weightE = 0.0
-weightF = 1.0
-
-# Iterate over epochs.
-for epoch in range(epochs):
-  print('============================', flush = True)
-  print('Start of epoch %d' % (epoch,))
-
-  loss_metric.reset_states()
-
-  # Iterate over the batches of the dataset.
-  for step, x_batch_train in enumerate(train_dataset):
-    loss = train_step_2(model, optimizer, mse_loss_fn,
-                      x_batch_train[0], x_batch_train[1], 
-                      x_batch_train[2], 
-                      weightE, weightF)
-    loss_metric(loss)
-
-    if step % 100 == 0:
-      print('step %s: mean loss = %s' % (step, str(loss_metric.result().numpy())))
-
-  print('epoch %s: mean loss = %s' % (epoch, str(loss_metric.result().numpy())))
-
-print("saving the weights")
-model.save_weights(checkFile+"_cycle_3.h5")
+  print("saving the weights")
+  model.save_weights(checkFile+"_cycle_"+str(cycle)+".h5")
 
 
 ##### testing ######
@@ -362,13 +302,16 @@ pointsTest, \
 potentialTest, \
 forcesTest  = gen_data(Ncells, Np, mu, 1000, minDelta, Lcell)
 
-potentialTest -= potMean
-potentialTest /= potStd
-forcesTest /= potStd
+potentialTestRscl = potentialTest - potMean
+potentialTestRscl /= potStd
+forcesTestRscl = forcesTest/potStd
 
 potPred, forcePred = model(pointsTest)
-err = tf.sqrt(tf.reduce_sum(tf.square(potPred - potentialTest)))/tf.sqrt(tf.reduce_sum(tf.square(potPred)))
-print(str(err.numpy()))
+err = tf.sqrt(tf.reduce_sum(tf.square(potPred - potentialTestRscl)))/tf.sqrt(tf.reduce_sum(tf.square(potPred)))
+print("Relative Error in the potential is " + str(err.numpy()))
+
+err = tf.sqrt(tf.reduce_sum(tf.square(forcePred - forcesTestRscl)))/tf.sqrt(tf.reduce_sum(tf.square(forcePred)))
+print("Relative Error in the forces is " +str(err.numpy()))
 
 # # # ################# Testing each step inside the model#####
 # with tf.GradientTape() as tape:
