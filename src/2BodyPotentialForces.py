@@ -211,7 +211,7 @@ model = DeepMDsimpleEnergy(Np, Ncells,
                             av, std)
 
 # quick run of the model to check that it is correct.
-E, F = model(Rinput)
+E, F = model(Rinput[0:10,:])
 model.summary()
 
 # Create checkpointing directory if necessary
@@ -316,6 +316,15 @@ for cycle, (epochs, batchSizeL) in enumerate(zip(Nepochs, batchSizeArray)):
     print('epoch %s: mean loss = %s  learning rate = %s'%(epoch,
                                                           meanLossStr,
                                                           lrStr))
+    lrDecay = optimizer._decayed_lr("float32").numpy()
+
+    weightE = computeWeight(weightEInit, weightELimit,
+                            lrDecay, learningRate)
+    weightF = computeWeight(weightFInit, weightFLimit,
+                            lrDecay, learningRate)
+    print('weights for potential %.8f: weights for forces %.8f'%(weightE, 
+                                                             weightF))
+
 
   print("saving the weights")
   model.save_weights(checkFile+"_cycle_"+str(cycle)+".h5")
