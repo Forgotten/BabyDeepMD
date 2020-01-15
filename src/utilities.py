@@ -284,7 +284,7 @@ def train_step_2(model, optimizer, loss,
   return total_loss
 
 def computeWeight(weightInit, weightLimit, lrT, lr0):
-  return weightLimit*(1-lrT/lr0) + weightInit*(lrT/lr0)
+  return np.abs(weightLimit*(1-lrT/lr0) + weightInit*(lrT/lr0))
 
 
 def computeNumStairs(Nepochs, batchSizeArray, Nsamples, epochsPerStair):
@@ -296,6 +296,5 @@ def computeNumStairs(Nepochs, batchSizeArray, Nsamples, epochsPerStair):
   return total_steps//decay_steps
 
 def computeLimitWeights(weights, decay, numStairs):
-  limitWeight = weights[1]
-  limitWeight = weights[1]/(1 - decay**numStairs)
+  limitWeight = weights[1]/(1.0 - decay**numStairs)
   return weights[0], limitWeight
