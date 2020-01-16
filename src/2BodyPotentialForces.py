@@ -288,7 +288,10 @@ for cycle, (epochs, batchSizeL) in enumerate(zip(Nepochs, batchSizeArray)):
     print('Start of epoch %d' % (epoch,))
   
     loss_metric.reset_states()
-  
+
+    # we initialize this outside the for loop
+    lrDecay, weightE, weightF = 0.0 , 0.0 , 0.0
+
     # Iterate over the batches of the dataset.
     for step, x_batch_train in enumerate(train_dataset):
 
@@ -316,12 +319,7 @@ for cycle, (epochs, batchSizeL) in enumerate(zip(Nepochs, batchSizeArray)):
     print('epoch %s: mean loss = %s  learning rate = %s'%(epoch,
                                                           meanLossStr,
                                                           lrStr))
-    lrDecay = optimizer._decayed_lr("float32").numpy()
 
-    weightE = computeWeight(weightEInit, weightELimit,
-                            lrDecay, learningRate)
-    weightF = computeWeight(weightFInit, weightFLimit,
-                            lrDecay, learningRate)
     print('weights for potential %.8f: weights for forces %.8f'%(weightE, 
                                                              weightF))
 
