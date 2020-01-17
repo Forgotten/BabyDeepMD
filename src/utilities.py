@@ -288,12 +288,12 @@ def computeWeight(weightInit, weightLimit, lrT, lr0):
 
 
 def computeNumStairs(Nepochs, batchSizeArray, Nsamples, epochsPerStair):
-  decay_steps = (Nsamples//batchSizeArray[0])*epochsPerStair
+  decay_steps = np.round((Nsamples/batchSizeArray[0])*epochsPerStair)
   total_steps = 0
   for (epochs, batchSize) in zip(Nepochs, batchSizeArray):
-    total_steps += epochs*(Nsamples//batchSize)
+    total_steps += epochs*(Nsamples/batchSize)
 
-  return total_steps//decay_steps
+  return np.round(total_steps/decay_steps)
 
 def computeLimitWeights(weights, decay, numStairs):
   limitWeight = weights[1]/(1.0 - decay**numStairs)
