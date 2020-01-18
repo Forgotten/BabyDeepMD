@@ -223,7 +223,7 @@ else:
 
 ## in the case we need to load an older saved model
 if loadFile: 
-  print("Loading the weights the model contained in %s"(loadFile), flush = True)
+  print("Loading the weights the model contained in %s"%(loadFile), flush = True)
   model.load_weights(loadFile)
 
 ## We use a decent training or a custom one if necessary
@@ -254,6 +254,10 @@ lrSchedule = tf.keras.optimizers.schedules.ExponentialDecay(
 numStairs = computeNumStairs(Nepochs, batchSizeArray, 
                              Nsamples, epochsPerStair)
 
+print("Number of stairs during the full trainig %d"%(numStairs))
+
+print("Terminal learning rate %.4e" %(learningRate*(decayRate**numStairs)))
+
 # computing the weights
 weightEInit, weightELimit = computeLimitWeights(weightEArray, 
                                                 decayRate, 
@@ -261,6 +265,10 @@ weightEInit, weightELimit = computeLimitWeights(weightEArray,
 weightFInit, weightFLimit = computeLimitWeights(weightFArray, 
                                                 decayRate, 
                                                 numStairs)
+
+print("Potential %.4f initial and %.4f limit weights"%(weightEInit,weightELimit))
+print("Forces %.4f initial and %.4f limit weights"%(weightFInit,weightFLimit ) )
+
 
 
 optimizer = tf.keras.optimizers.Adam(learning_rate=lrSchedule)
