@@ -107,6 +107,41 @@ def genDistInv(Rin, Ncells, Np, av = [0.0, 0.0], std = [1.0, 1.0]):
 
     return R_Diff_total
 
+
+
+@tf.function
+def genDistInvLongRange(Rin, Ncells, Np, av = [0.0, 0.0], std = [1.0, 1.0]):
+    # function to generate the generalized coordinates
+    # the input has dimensions (Nsamples, Ncells*Np)
+    # the ouput has dimensions (Nsamples*Ncells*Np*(3*Np-1), 2)
+
+    # add assert with respect to the input shape 
+    Nsamples = Rin.shape[0]
+    R = tf.reshape(Rin, (Nsamples, Ncells*Np))
+
+    Abs_Array = []
+    Abs_Inv_Array = []
+    # we compute the difference between points in the same
+    # interaction list
+    for i in range(Ncells*Np):
+      absInvArray = []
+      for j in range(Ncells*Np):
+        if i != j :
+                # absDistArray.append((tf.abs(tf.expand_dims(
+                #                      tf.subtract(R[:,i+l,k], R[:,i,j]),-1))-av[1])/std[1] )
+          absInvArray.append((tf.abs(tf.math.reciprocal(
+                            tf.expand_dims(
+                            tf.subtract(R[:,j], R[:,i]),-1))) - av[0])/std[0])
+      
+      Abs_Inv_Array.append(tf.expand_dims(
+                                tf.concat(absInvArray, axis = 1), 1))
+
+
+    # concatenating the lists of tensors to a large tensor
+    absInvList = tf.reduce_sum(tf.concat(Abs_Inv_Array, axis = 1), axis = 2)
+
+    return absInvList
+
 @tf.function
 def genDist(Rin, Ncells, Np):
     # function to generate the generalized coordinates only with the distance
