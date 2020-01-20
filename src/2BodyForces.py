@@ -207,7 +207,8 @@ model = DeepMDsimpleEnergy(Np, Ncells,
                             av, std)
 
 # quick run of the model to check that it is correct.
-E, F = model(Rinput)
+# we use a small set 
+E, F = model(Rinput[0:100,:])
 model.summary()
 
 # Create checkpointing directory if necessary

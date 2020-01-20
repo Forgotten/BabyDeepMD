@@ -113,7 +113,7 @@ Rinput = tf.Variable(pointsArray, name="input", dtype = tf.float32)
 
 #compute the statistics of the inputs in order to rescale 
 #the descriptor computation 
-genCoordinates = genDistInv(Rinput[0:100,:], Ncells, Np)
+genCoordinates = genDistInv(Rinput[0:1000,:], Ncells, Np)
 
 
 if loadFile: 
@@ -124,11 +124,11 @@ if loadFile:
   print("loading the saved mean and std of the generilized coordinates")
 else:
   av = tf.reduce_mean(genCoordinates, 
-                    axis = 0, 
-                    keepdims =True ).numpy()[0]
+                      axis = 0, 
+                      keepdims =True ).numpy()[0]
   std = tf.sqrt(tf.reduce_mean(tf.square(genCoordinates - av), 
-                             axis = 0, 
-                             keepdims=True)).numpy()[0]
+                               axis = 0, 
+                               keepdims=True)).numpy()[0]
 
 print("mean of the inputs are %.8f and %.8f"%(av[0], av[1]))
 print("std of the inputs are %.8f and %.8f"%(std[0], std[1]))
@@ -366,5 +366,5 @@ with tf.GradientTape() as tape:
   F = model.linfitNet(F2)
   Energy = tf.reduce_sum(tf.reshape(F, (-1, model.Ncells*model.Np)),
                           keepdims = True, axis = 1)
-Forces = -tape.gradient(Energy, RinputSmall)
+Forces = - tape.gradient(Energy, RinputSmall)
 
