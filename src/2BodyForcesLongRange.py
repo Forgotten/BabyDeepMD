@@ -194,7 +194,8 @@ class DeepMDsimpleEnergy(tf.keras.Model):
       L2   = self.layerPyramidInv(genCoordinates[:,0:1])*genCoordinates[:,0:-1]
       # (Nsamples*Ncells*Np*(3*Np - 1), descriptorDim)
 
-      longRangewCoord2 = tf.reshape(longRangewCoord, (-1, 1))
+      # we compute the FMM and the normalize by the number of particules
+      longRangewCoord2 = tf.reshape(longRangewCoord, (-1, 1))/(self.Np*self.Ncells)
       # (Nsamples*Ncells*Np, 1)
       L3   = self.layerPyramidLongRange(longRangewCoord2)
       # (Nsamples*Ncells*Np, descriptorDim)
