@@ -13,7 +13,7 @@ import sys
 import json
 
 from data_gen_1d import gen_data
-from utilities import genDistInv, train_step_2, genDistInvLongRange
+from utilities import genDistInv, train_step_2, genDistInvLongRangeWindow
 from utilities import MyDenseLayer, pyramidLayer, pyramidLayerNoBias
 
 nameScript = sys.argv[0].split('/')[-1]
@@ -186,8 +186,10 @@ class DeepMDsimpleEnergy(tf.keras.Model):
       genCoordinates = genDistInv(inputs, self.Ncells, self.Np, 
                                   self.av, self.std)
 
-      longRangewCoord = genDistInvLongRange(inputs, self.Ncells, self.Np, 
-                                            self.av, self.std)
+      longRangewCoord = genDistInvLongRangeWindow(inputs, self.Ncells, 
+                                                  self.Np, 
+                                                  0.5, 3.0, # so far they are hardwired
+                                                  self.av, self.std)
       # (Nsamples*Ncells*Np*(3*Np - 1), 2)
       L1   = self.layerPyramid(genCoordinates[:,1:])*genCoordinates[:,1:]
       # (Nsamples*Ncells*Np*(3*Np - 1), descriptorDim)
