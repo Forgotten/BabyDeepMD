@@ -68,9 +68,13 @@ checkFile = checkFolder + "checkpoint_" + nameScript + \
                           "_minDelta_%.4f"%(minDelta) + \
                           "_Nsamples_" + str(Nsamples)
 
+print("Using data in %s"%(dataFile))
+
 # if the file doesn't exist we create it
 if not path.exists(dataFile):
   # TODO: encapsulate all this in a function
+  print("Data file does not exist, we create a new one")
+
   pointsArray, \
   potentialArray, \
   forcesArray  = gen_data(Ncells, Np, mu, Nsamples, minDelta, Lcell)

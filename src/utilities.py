@@ -162,7 +162,7 @@ def genDistInvLongRangeWindow(Rin, Ncells, Np, widht_tran = 0.5, width = 3.0, av
         if i != j :
                 # absDistArray.append((tf.abs(tf.expand_dims(
                 #                      tf.subtract(R[:,i+l,k], R[:,i,j]),-1))-av[1])/std[1] )
-          A = 1 - 0.5*tf.math.erfc(tf.abs(tf.expand_dims(tf.subtract(R[:,j], R[:,i]),-1))/widht_tran- width)
+          A = 1 - 0.5*tf.math.erfc(tf.abs(tf.expand_dims(tf.subtract(R[:,j], R[:,i]),-1))/widht_tran-width)
           absInvArray.append(tf.multiply(A, (tf.abs(tf.math.reciprocal(
                                             tf.expand_dims(
                                             tf.subtract(R[:,j], 
