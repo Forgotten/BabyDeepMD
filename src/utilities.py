@@ -354,14 +354,14 @@ class fmmLayer(tf.keras.layers.Layer):
 
   def build(self, input_shape):
     self.std = []
-    for _ in range(4):
-      self.std.append(self.add_weight("std",
+    for ii in range(4):
+      self.std.append(self.add_weight("std_"+str(ii),
                        initializer=tf.initializers.ones(),
                        shape=[1,]))
 
     self.bias = []
     for _ in range(4):
-      self.bias.append(self.add_weight("bias",
+      self.bias.append(self.add_weight("bias_"+str(ii),
                        initializer=tf.initializers.zeros(),
                        shape=[1,]))
 
