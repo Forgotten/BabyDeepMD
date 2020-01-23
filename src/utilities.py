@@ -143,6 +143,39 @@ def genDistInvLongRange(Rin, Ncells, Np, av = [0.0, 0.0], std = [1.0, 1.0]):
     return absInvList
 
 @tf.function
+def genDistLongRangeFull(Rin, Ncells, Np, av = [0.0, 0.0], std = [1.0, 1.0]):
+    # function to generate the generalized coordinates
+    # the input has dimensions (Nsamples, Ncells*Np)
+    # the ouput has dimensions (Nsamples*Ncells*Np*(3*Np-1), 2)
+
+    # add assert with respect to the input shape 
+    Nsamples = Rin.shape[0]
+    R = tf.reshape(Rin, (Nsamples, Ncells*Np))
+
+    absArrayGlobal = []
+    # we compute the difference between points in the same
+    # interaction list
+    for i in range(Ncells*Np):
+      absArray = []
+      for j in range(Ncells*Np):
+        if i != j :
+                # absDistArray.append((tf.abs(tf.expand_dims(
+                #                      tf.subtract(R[:,i+l,k], R[:,i,j]),-1))-av[1])/std[1] )
+          absArray.append((tf.abs(tf.expand_dims(
+                            tf.subtract(R[:,j], R[:,i]),-1))-av[0])/std[0])
+      
+      absArrayGlobal.append(tf.expand_dims(
+                                tf.concat(absArray, axis = 1), 1))
+
+
+    # concatenating the lists of tensors to a large tensor 
+    # we don't perform a reduction in the coordinates
+    absInvList = tf.concat(absArrayGlobal, axis = 1)
+    # (batchSize, Ncells*Np, Ncells*Np -1 ) 
+
+    return absInvList
+
+@tf.function
 def genDistInvLongRangeWindow(Rin, Ncells, Np, widht_tran = 0.5, width = 3.0, av = [0.0, 0.0], std = [1.0, 1.0]):
     # function to generate the generalized coordinates
     # the input has dimensions (Nsamples, Ncells*Np)
@@ -309,6 +342,53 @@ class pyramidLayerNoBias(tf.keras.layers.Layer):
       else :
         x = self.actfn(tf.matmul(x, ker))
     return x
+
+class fmmLayer(tf.keras.layers.Layer):
+  def __init__(self, Ncells, Np, width_tran = 0.5, width = 3):
+    super(fmmLayer, self).__init__()
+    self.Ncells = Ncells
+    self.Np = Np
+    self.width_tran = width_tran 
+    self.width = width
+
+
+  def build(self, input_shape):
+    self.std = []
+    for _ in range(4):
+      self.std.append(self.add_weight("std",
+                       initializer=tf.initializers.ones(),
+                       shape=[1,]))
+
+    self.bias = []
+    for _ in range(4):
+      self.bias.append(self.add_weight("bias",
+                       initializer=tf.initializers.zeros(),
+                       shape=[1,]))
+
+
+  @tf.function
+  def call(self, input):
+    ExtCoords =  genDistLongRangeFull(input, self.Ncells, self.Np, 
+                                      [0.0, 0.0], [1.0, 1.0]) # this are hard coded
+
+    window = 1-0.5*tf.math.erfc(ExtCoords/self.width_tran-self.width)
+    
+    kernelApp = []
+
+    kernelApp.append(tf.abs(self.std[0])*(tf.expand_dims(tf.multiply(window,
+                     tf.math.reciprocal(ExtCoords)), axis = -1) - self.bias[0]))
+    kernelApp.append(tf.abs(self.std[1])*(tf.expand_dims(tf.multiply(window,
+                     tf.sqrt(tf.math.reciprocal(ExtCoords))), axis = -1)- self.bias[1]))
+    kernelApp.append(tf.abs(self.std[2])*(tf.expand_dims(tf.multiply(window,
+                     tf.square(tf.math.reciprocal(ExtCoords))), axis = -1)- self.bias[2]))
+    kernelApp.append(tf.abs(self.std[3])*(tf.expand_dims(tf.multiply(window,
+                     tf.math.bessel_i0e(ExtCoords)), axis = -1)- self.bias[3]))
+
+    fmm = tf.reduce_sum(tf.concat(kernelApp, axis = -1), axis = 2)
+
+
+    return fmm 
+
 
 @tf.function
 def train_step(model, optimizer, loss, inputs, outputsE):
