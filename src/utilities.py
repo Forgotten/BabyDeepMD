@@ -426,7 +426,7 @@ class expSumLayer(tf.keras.layers.Layer):
     kernelApp = tf.abs(self.std[0])*(tf.multiply(window,
                      tf.math.exp(-self.mu*ExtCoords)) - self.bias[0])
 
-    fmm = tf.reduce_sum(tf.concat(kernelApp, axis = -1), axis = )
+    fmm = tf.reduce_sum(kernelApp, axis =2)
 
     return fmm 
 
