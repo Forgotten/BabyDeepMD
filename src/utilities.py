@@ -392,7 +392,7 @@ class fmmLayer(tf.keras.layers.Layer):
 
 class expSumLayer(tf.keras.layers.Layer):
   def __init__(self, Ncells, Np, mu = 2, winWidth = 3, winTrans = 0.5):
-    super(fmmLayer, self).__init__()
+    super(expSumLayer, self).__init__()
     self.Ncells = Ncells
     self.Np = Np
     self.mu = mu
