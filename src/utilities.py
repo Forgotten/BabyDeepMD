@@ -390,6 +390,47 @@ class fmmLayer(tf.keras.layers.Layer):
     return fmm 
 
 
+class expSumLayer(tf.keras.layers.Layer):
+  def __init__(self, Ncells, Np, mu = 2, winWidth = 3, winTrans = 0.5):
+    super(fmmLayer, self).__init__()
+    self.Ncells = Ncells
+    self.Np = Np
+    self.mu = mu
+    # this is the width and the transition of the window
+    self.winTrans = winTrans 
+    self.winWidth = winWidth
+
+
+  def build(self, input_shape):
+    # we provide some freedom 
+    self.std = []
+    for ii in range(1):
+      self.std.append(self.add_weight("std_"+str(ii),
+                       initializer=tf.initializers.ones(),
+                       shape=[1,]))
+
+    self.bias = []
+    for ii in range(1):
+      self.bias.append(self.add_weight("bias_"+str(ii),
+                       initializer=tf.initializers.zeros(),
+                       shape=[1,]))
+
+
+  @tf.function
+  def call(self, input):
+    ExtCoords =  genDistLongRangeFull(input, self.Ncells, self.Np, 
+                                      [0.0, 0.0], [1.0, 1.0]) # this are hard coded
+
+    window = 1-0.5*tf.math.erfc(ExtCoords/self.winTrans-self.winWidth)
+    
+    kernelApp = tf.abs(self.std[0])*(tf.multiply(window,
+                     tf.math.exp(-self.mu*ExtCoords)) - self.bias[0])
+
+    fmm = tf.reduce_sum(tf.concat(kernelApp, axis = -1), axis = )
+
+    return fmm 
+
+
 @tf.function
 def train_step(model, optimizer, loss, inputs, outputsE):
 # funtion to perform one training step
