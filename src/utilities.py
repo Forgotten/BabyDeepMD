@@ -390,9 +390,9 @@ class fmmLayer(tf.keras.layers.Layer):
     return fmm 
 
 
-class expSumLayer(tf.keras.layers.Layer):
+class expSumLayerWindow(tf.keras.layers.Layer):
   def __init__(self, Ncells, Np, mu = 2, winWidth = 3, winTrans = 0.5):
-    super(expSumLayer, self).__init__()
+    super(expSumLayerWindow, self).__init__()
     self.Ncells = Ncells
     self.Np = Np
     self.mu = mu
@@ -427,6 +427,44 @@ class expSumLayer(tf.keras.layers.Layer):
                      tf.math.exp(-self.mu*ExtCoords)) - self.bias[0])
 
     fmm = tf.reduce_sum(kernelApp, axis =2)
+
+    return fmm 
+
+
+class expSumLayer(tf.keras.layers.Layer):
+  def __init__(self, Ncells, Np, mu = 2):
+    super(expSumLayer, self).__init__()
+    self.Ncells = Ncells
+    self.Np = Np
+    self.mu = mu
+    # this is the width and the transition of the window
+    self.winTrans = winTrans 
+    self.winWidth = winWidth
+
+
+  def build(self, input_shape):
+    # we provide some freedom 
+    self.std = []
+    for ii in range(1):
+      self.std.append(self.add_weight("std_"+str(ii),
+                       initializer=tf.initializers.ones(),
+                       shape=[1,]))
+
+    self.bias = []
+    for ii in range(1):
+      self.bias.append(self.add_weight("bias_"+str(ii),
+                       initializer=tf.initializers.zeros(),
+                       shape=[1,]))
+
+
+  @tf.function
+  def call(self, input):
+    ExtCoords =  genDistLongRangeFull(input, self.Ncells, self.Np, 
+                                      [0.0, 0.0], [1.0, 1.0]) # this are hard coded
+    
+    kernelApp = tf.abs(self.std[0])*(tf.math.exp(-self.mu*ExtCoords)-self.bias[0])
+
+    fmm = tf.reduce_sum(kernelApp, axis = 2)
 
     return fmm 
 
@@ -489,3 +527,14 @@ def computeNumStairs(Nepochs, batchSizeArray, Nsamples, epochsPerStair):
 def computeLimitWeights(weights, decay, numStairs):
   limitWeight = weights[1]/(1.0 - decay**numStairs)
   return weights[0], limitWeight
+
+def computePairWiseDist(points, Nsamples):
+  tensorPoints = np.reshape(points, (Nsamples, -1, 1))
+  Pairwise = tensorPoints - tensorPoints.transpose((0,2,1))
+
+  return Pairwise
+  
+
+
+
+

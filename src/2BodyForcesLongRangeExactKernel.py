@@ -179,8 +179,7 @@ class DeepMDsimpleEnergy(tf.keras.Model):
 
     # layer to apply the fmm (this is already windowed)
     self.expSumLayer = expSumLayer(self.Ncells, self.Np, 
-                                   self.mu, self.winWidth, 
-                                   self.winTrans)
+                                   self.mu)
 
     self.layerPyramidLongRange  = pyramidLayer(descripDim, 
                                        actfn = tf.nn.tanh)
@@ -373,7 +372,7 @@ with tf.GradientTape() as tape:
   # we compute the FMM and the normalize by the number of particules
   longRangewCoord = model.expSumLayer(RinputSmall)
   # (Nsamples, Ncells*Np, 4) # we are only using 4 kernels
-  longRangewCoord2 = tf.reshape(longRangewCoord, (-1, 4))/(model.Np*model.Ncells)
+  longRangewCoord2 = tf.reshape(longRangewCoord, (-1, 1))
   # (Nsamples*Ncells*Np, 1)
   L3   = model.layerPyramidLongRange(longRangewCoord2)
   # (Nsamples*Ncells*Np, descriptorDim)
