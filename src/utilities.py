@@ -437,10 +437,6 @@ class expSumLayer(tf.keras.layers.Layer):
     self.Ncells = Ncells
     self.Np = Np
     self.mu = mu
-    # this is the width and the transition of the window
-    self.winTrans = winTrans 
-    self.winWidth = winWidth
-
 
   def build(self, input_shape):
     # we provide some freedom 
