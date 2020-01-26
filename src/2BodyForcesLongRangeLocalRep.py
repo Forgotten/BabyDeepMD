@@ -1,8 +1,7 @@
 # typical imports
 # we have a simplified deep MD using only the radial information
-# and the inverse of the radial information. We don't allow the particules to be
-# too close, we allow biases in the pyramids and we multiply the outcome by 
-# the descriptor income (in order to preserve the zeros)
+# and the inverse of the radial information locally
+# for the long range we only use
 import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
@@ -343,24 +342,29 @@ print("Relative Error in the forces is " +str(err.numpy()))
 RinputSmall = Rinput[0:16, :]
 
 with tf.GradientTape() as tape:
-# we watch the inputs 
+  # we watch the inputs 
+
   tape.watch(RinputSmall)
   # (Nsamples, Ncells*Np)
-  # in this case we are only considerinputg the distances
+  # in this case we are only considering the distances
   genCoordinates = genDistInv(RinputSmall, model.Ncells, model.Np, 
                               model.av, model.std)
-  longRangewCoord = genDistInvLongRange(RinputSmall, model.Ncells, model.Np, 
-                                        model.av, model.std)
+
   # (Nsamples*Ncells*Np*(3*Np - 1), 2)
   L1   = model.layerPyramid(genCoordinates[:,1:])*genCoordinates[:,1:]
   # (Nsamples*Ncells*Np*(3*Np - 1), descriptorDim)
   L2   = model.layerPyramidInv(genCoordinates[:,0:1])*genCoordinates[:,0:-1]
   # (Nsamples*Ncells*Np*(3*Np - 1), descriptorDim)
-  
-  longRangewCoord2 = tf.reshape(longRangewCoord, (-1, 1))  
+
+  # we compute the FMM and the normalize by the number of particules
+  longRangewCoord = model.fmmLayer(RinputSmall)
+  # (Nsamples, Ncells*Np, 4) # we are only using 4 kernels
+  longRangewCoord2 = tf.reshape(longRangewCoord, (-1, 4))/(model.Np*model.Ncells)
   # (Nsamples*Ncells*Np, 1)
   L3   = model.layerPyramidLongRange(longRangewCoord2)
   # (Nsamples*Ncells*Np, descriptorDim)
+
+
   # (Nsamples*Ncells*Np*(3*Np - 1), descriptorDim)
   LL = tf.concat([L1, L2], axis = 1)
   # (Nsamples*Ncells*Np*(3*Np - 1), 2*descriptorDim)
@@ -369,11 +373,15 @@ with tf.GradientTape() as tape:
   # (Nsamples*Ncells*Np, (3*Np - 1), 2*descriptorDim)
   D = tf.reduce_sum(Dtemp, axis = 1)
   # (Nsamples*Ncells*Np, 2*descriptorDim)
+
   DLongRange = tf.concat([D, L3], axis = 1)
+
   F2 = model.fittingNetwork(DLongRange)
   F = model.linfitNet(F2)
+
   Energy = tf.reduce_sum(tf.reshape(F, (-1, model.Ncells*model.Np)),
                           keepdims = True, axis = 1)
-Forces = - tape.gradient(Energy, RinputSmall)
+
+Forces = -tape.gradient(Energy, RinputSmall)
 
 
