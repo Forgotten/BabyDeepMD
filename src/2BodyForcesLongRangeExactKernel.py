@@ -47,10 +47,6 @@ dataFolder = data["dataFolder"]
 loadFile = data["loadFile"]
 Nepochs = data["numberEpoch"]
 
-winWidth = data["widowWidth"]
-winTrans = data["widowTransition"]
-
-
 # the ones not used yet
 potentialType = data["potentialType"]
 
@@ -153,8 +149,6 @@ class DeepMDsimpleEnergy(tf.keras.Model):
                av = [0.0, 0.0],
                std = [1.0, 1.0],
                mu = 2,
-               winWidth = 3.0,
-               winTrans = 0.5,
                name='deepMDsimpleEnergy',
                **kwargs):
     super(DeepMDsimpleEnergy, self).__init__(name=name, **kwargs)
@@ -166,8 +160,6 @@ class DeepMDsimpleEnergy(tf.keras.Model):
     self.av = av
     self.std = std
     self.mu = mu
-    self.winWidth = winWidth
-    self.winTrans = winTrans
     self.descripDim = descripDim
     self.fittingDim = fittingDim
     self.descriptorDim = descripDim[-1]
@@ -239,8 +231,7 @@ class DeepMDsimpleEnergy(tf.keras.Model):
 ## Defining the model
 model = DeepMDsimpleEnergy(Np, Ncells, 
                            filterNet, fittingNet, 
-                           av, std, mu,
-                           winWidth, winTrans)
+                           av, std, mu)
 
 # quick run of the model to check that it is correct.
 # we use a small set 
