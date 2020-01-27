@@ -12,7 +12,7 @@ import sys
 import json
 
 from data_gen_1d import gen_data
-from utilities import genDistInv, train_step_2, genDistInvLongRange
+from utilities import genDistInv, train_step_2, genDistInvLongRange, genDistLongRangeFull
 from utilities import MyDenseLayer, pyramidLayer, pyramidLayerNoBias, fmmLayer
 
 nameScript = sys.argv[0].split('/')[-1]
@@ -118,6 +118,30 @@ Rinput = tf.Variable(pointsArray, name="input", dtype = tf.float32)
 #the descriptor computation 
 genCoordinates = genDistInv(Rinput[0:1000,:], Ncells, Np)
 
+# we need to compute the normalization coefficients
+ExtCoords = genDistLongRangeFull(Rinput[0:1000,:], Ncells, Np, 
+                                      [0.0, 0.0], [1.0, 1.0]) # this are hard coded
+
+KernelGen0 = tf.reshape(tf.reduce_sum(tf.math.reciprocal(ExtCoords), axis = 2), (-1, 1))
+KernelGen1 = tf.reshape(tf.reduce_sum(tf.sqrt(tf.math.reciprocal(ExtCoords)), axis = 2), (-1, 1))
+KernelGen2 = tf.reshape(tf.reduce_sum(tf.square(tf.math.reciprocal(ExtCoords)), axis = 2), (-1, 1))
+KernelGen3 = tf.reshape(tf.reduce_sum(tf.math.bessel_i0e(ExtCoords), axis = 2), (-1, 1))
+
+mean0, std0 =  tf.math.reduce_std(KernelGen0), tf.math.reduce_mean(KernelGen0)
+mean1, std1 =  tf.math.reduce_std(KernelGen1), tf.math.reduce_mean(KernelGen1)
+mean2, std2 =  tf.math.reduce_std(KernelGen2), tf.math.reduce_mean(KernelGen2)
+mean3, std3 =  tf.math.reduce_std(KernelGen3), tf.math.reduce_mean(KernelGen3)
+
+meanLongRange = np.array([mean0.numpy(), mean1.numpy(), mean2.numpy(), mean3.numpy()])
+stdLongRange = np.array([std0.numpy(), std1.numpy(), std2.numpy(), std3.numpy()])
+
+meanLongRange = meanLongRange.reshape((1,4))
+stdLongRange = stdLongRange.reshape((1,4))
+print("long range meand")
+print(meanLongRange)
+
+print("long range std")
+print(stdLongRange)
 
 if loadFile: 
   # if we are loadin a file we need to be sure that we are 
@@ -147,6 +171,8 @@ class DeepMDsimpleEnergy(tf.keras.Model):
                fittingDim = [16, 8, 4, 2, 1],
                av = [0.0, 0.0],
                std = [1.0, 1.0],
+               meanLongRange = [0.0 ,0.0, 0.0, 0.0],
+               stdLongRange = [1.0 , 1.0, 1.0, 1.0],
                name='deepMDsimpleEnergy',
                **kwargs):
     super(DeepMDsimpleEnergy, self).__init__(name=name, **kwargs)
@@ -160,6 +186,11 @@ class DeepMDsimpleEnergy(tf.keras.Model):
     self.descripDim = descripDim
     self.fittingDim = fittingDim
     self.descriptorDim = descripDim[-1]
+
+    # the normalizatio necessary for the long range interaction
+    self.meanLongRange = meanLongRange
+    self.stdLongRange = stdLongRange
+
     # we may need to use the tanh here
     self.layerPyramid   = pyramidLayer(descripDim, 
                                        actfn = tf.nn.tanh)
@@ -197,7 +228,8 @@ class DeepMDsimpleEnergy(tf.keras.Model):
       # we compute the FMM and the normalize by the number of particules
       longRangewCoord = self.fmmLayer(inputs)
       # (Nsamples, Ncells*Np, 4) # we are only using 4 kernels
-      longRangewCoord2 = tf.reshape(longRangewCoord, (-1, 4))/(self.Np*self.Ncells)
+      # in addition here we normalize the inputs by a estimation of the mean and std
+      longRangewCoord2 = (tf.reshape(longRangewCoord, (-1, 4))-self.meanLongRange)/self.stdLongRange
       # (Nsamples*Ncells*Np, 1)
       L3   = self.layerPyramidLongRange(longRangewCoord2)
       # (Nsamples*Ncells*Np, descriptorDim)
@@ -227,7 +259,7 @@ class DeepMDsimpleEnergy(tf.keras.Model):
 ## Defining the model
 model = DeepMDsimpleEnergy(Np, Ncells, 
                            filterNet, fittingNet, 
-                            av, std)
+                            av, std, meanLongRange, stdLongRange)
 
 # quick run of the model to check that it is correct.
 # we use a small set 
