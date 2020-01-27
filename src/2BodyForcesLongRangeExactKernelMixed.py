@@ -12,7 +12,7 @@ import sys
 import json
 
 from data_gen_1d import gen_data
-from utilities import genDistInv, train_step_2, genDistInvLongRange
+from utilities import genDistInv, train_step_2, genDistInvLongRange, genDistLongRangeFull
 from utilities import MyDenseLayer, pyramidLayer, pyramidLayerNoBias, fmmLayerExact
 
 nameScript = sys.argv[0].split('/')[-1]
@@ -118,6 +118,30 @@ Rinput = tf.Variable(pointsArray, name="input", dtype = tf.float32)
 #the descriptor computation 
 genCoordinates = genDistInv(Rinput[0:1000,:], Ncells, Np)
 
+# we need to compute the normalization coefficients
+ExtCoords = genDistLongRangeFull(Rinput[0:1000,:], Ncells, Np, 
+                                      [0.0, 0.0], [1.0, 1.0]) # this are hard coded
+
+KernelGen0 = tf.reshape(tf.reduce_sum(tf.math.reciprocal(ExtCoords), axis = 2), (-1, 1))
+KernelGen1 = tf.reshape(tf.reduce_sum(tf.sqrt(tf.math.reciprocal(ExtCoords)), axis = 2), (-1, 1))
+KernelGen2 = tf.reshape(tf.reduce_sum(tf.square(tf.math.reciprocal(ExtCoords)), axis = 2), (-1, 1))
+KernelGen3 = tf.reshape(tf.reduce_sum(tf.math.exp(-mu*ExtCoords), axis = 2), (-1, 1))
+
+mean0, std0 =  tf.math.reduce_std(KernelGen0), tf.math.reduce_mean(KernelGen0)
+mean1, std1 =  tf.math.reduce_std(KernelGen1), tf.math.reduce_mean(KernelGen1)
+mean2, std2 =  tf.math.reduce_std(KernelGen2), tf.math.reduce_mean(KernelGen2)
+mean3, std3 =  tf.math.reduce_std(KernelGen3), tf.math.reduce_mean(KernelGen3)
+
+meanLongRange = np.array([mean0.numpy(), mean1.numpy(), mean2.numpy(), mean3.numpy()])
+stdLongRange = np.array([std0.numpy(), std1.numpy(), std2.numpy(), std3.numpy()])
+
+meanLongRange = meanLongRange.reshape((1,4))
+stdLongRange = stdLongRange.reshape((1,4))
+print("long range meand")
+print(meanLongRange)
+
+print("long range std")
+print(stdLongRange)
 
 if loadFile: 
   # if we are loadin a file we need to be sure that we are 
@@ -148,6 +172,8 @@ class DeepMDsimpleEnergy(tf.keras.Model):
                mu = 2.0, 
                av = [0.0, 0.0],
                std = [1.0, 1.0],
+               meanLongRange = [0.0 ,0.0, 0.0, 0.0],
+               stdLongRange = [1.0 , 1.0, 1.0, 1.0],
                name='deepMDsimpleEnergy',
                **kwargs):
     super(DeepMDsimpleEnergy, self).__init__(name=name, **kwargs)
@@ -162,6 +188,9 @@ class DeepMDsimpleEnergy(tf.keras.Model):
     self.descripDim = descripDim
     self.fittingDim = fittingDim
     self.descriptorDim = descripDim[-1]
+
+    self.meanLongRange = meanLongRange
+    self.stdLongRange = stdLongRange
     # we may need to use the tanh here
     self.layerPyramid   = pyramidLayer(descripDim, 
                                        actfn = tf.nn.tanh)
@@ -199,7 +228,8 @@ class DeepMDsimpleEnergy(tf.keras.Model):
       # we compute the FMM and the normalize by the number of particules
       longRangewCoord = self.fmmLayerExact(inputs)
       # (Nsamples, Ncells*Np, 4) # we are only using 4 kernels
-      longRangewCoord2 = tf.reshape(longRangewCoord, (-1, 4))
+      # we normalize the output of the fmm layer before feeding them to network
+      longRangewCoord2 = (tf.reshape(longRangewCoord, (-1, 4))-self.meanLongRange)/self.stdLongRange
       # (Nsamples*Ncells*Np, 1)
       L3   = self.layerPyramidLongRange(longRangewCoord2)
       # (Nsamples*Ncells*Np, descriptorDim)
@@ -229,7 +259,7 @@ class DeepMDsimpleEnergy(tf.keras.Model):
 ## Defining the model
 model = DeepMDsimpleEnergy(Np, Ncells, 
                            filterNet, fittingNet, mu,
-                            av, std)
+                            av, std, meanLongRange, stdLongRange)
 
 # quick run of the model to check that it is correct.
 # we use a small set 
@@ -341,49 +371,49 @@ print("Relative Error in the forces is " +str(err.numpy()))
 
 # # # ################# Testing each step inside the model#####
 
-RinputSmall = Rinput[0:16, :]
+# RinputSmall = Rinput[0:16, :]
 
-with tf.GradientTape() as tape:
-  # we watch the inputs 
+# with tf.GradientTape() as tape:
+#   # we watch the inputs 
 
-  tape.watch(RinputSmall)
-  # (Nsamples, Ncells*Np)
-  # in this case we are only considering the distances
-  genCoordinates = genDistInv(RinputSmall, model.Ncells, model.Np, 
-                              model.av, model.std)
+#   tape.watch(RinputSmall)
+#   # (Nsamples, Ncells*Np)
+#   # in this case we are only considering the distances
+#   genCoordinates = genDistInv(RinputSmall, model.Ncells, model.Np, 
+#                               model.av, model.std)
 
-  # (Nsamples*Ncells*Np*(3*Np - 1), 2)
-  L1   = model.layerPyramid(genCoordinates[:,1:])*genCoordinates[:,1:]
-  # (Nsamples*Ncells*Np*(3*Np - 1), descriptorDim)
-  L2   = model.layerPyramidInv(genCoordinates[:,0:1])*genCoordinates[:,0:-1]
-  # (Nsamples*Ncells*Np*(3*Np - 1), descriptorDim)
+#   # (Nsamples*Ncells*Np*(3*Np - 1), 2)
+#   L1   = model.layerPyramid(genCoordinates[:,1:])*genCoordinates[:,1:]
+#   # (Nsamples*Ncells*Np*(3*Np - 1), descriptorDim)
+#   L2   = model.layerPyramidInv(genCoordinates[:,0:1])*genCoordinates[:,0:-1]
+#   # (Nsamples*Ncells*Np*(3*Np - 1), descriptorDim)
 
-  # we compute the FMM and the normalize by the number of particules
-  longRangewCoord = model.fmmLayerExact(RinputSmall)
-  # (Nsamples, Ncells*Np, 4) # we are only using 4 kernels
-  longRangewCoord2 = tf.reshape(longRangewCoord, (-1, 4))/(model.Np*model.Ncells)
-  # (Nsamples*Ncells*Np, 1)
-  L3   = model.layerPyramidLongRange(longRangewCoord2)
-  # (Nsamples*Ncells*Np, descriptorDim)
+#   # we compute the FMM and the normalize by the number of particules
+#   longRangewCoord = model.fmmLayerExact(RinputSmall)
+#   # (Nsamples, Ncells*Np, 4) # we are only using 4 kernels
+#   longRangewCoord2 = tf.reshape(longRangewCoord, (-1, 4))/(model.Np*model.Ncells)
+#   # (Nsamples*Ncells*Np, 1)
+#   L3   = model.layerPyramidLongRange(longRangewCoord2)
+#   # (Nsamples*Ncells*Np, descriptorDim)
 
 
-  # (Nsamples*Ncells*Np*(3*Np - 1), descriptorDim)
-  LL = tf.concat([L1, L2], axis = 1)
-  # (Nsamples*Ncells*Np*(3*Np - 1), 2*descriptorDim)
-  Dtemp = tf.reshape(LL, (-1, 3*model.Np-1, 
-                          2*model.descriptorDim ))
-  # (Nsamples*Ncells*Np, (3*Np - 1), 2*descriptorDim)
-  D = tf.reduce_sum(Dtemp, axis = 1)
-  # (Nsamples*Ncells*Np, 2*descriptorDim)
+#   # (Nsamples*Ncells*Np*(3*Np - 1), descriptorDim)
+#   LL = tf.concat([L1, L2], axis = 1)
+#   # (Nsamples*Ncells*Np*(3*Np - 1), 2*descriptorDim)
+#   Dtemp = tf.reshape(LL, (-1, 3*model.Np-1, 
+#                           2*model.descriptorDim ))
+#   # (Nsamples*Ncells*Np, (3*Np - 1), 2*descriptorDim)
+#   D = tf.reduce_sum(Dtemp, axis = 1)
+#   # (Nsamples*Ncells*Np, 2*descriptorDim)
 
-  DLongRange = tf.concat([D, L3], axis = 1)
+#   DLongRange = tf.concat([D, L3], axis = 1)
 
-  F2 = model.fittingNetwork(DLongRange)
-  F = model.linfitNet(F2)
+#   F2 = model.fittingNetwork(DLongRange)
+#   F = model.linfitNet(F2)
 
-  Energy = tf.reduce_sum(tf.reshape(F, (-1, model.Ncells*model.Np)),
-                          keepdims = True, axis = 1)
+#   Energy = tf.reduce_sum(tf.reshape(F, (-1, model.Ncells*model.Np)),
+#                           keepdims = True, axis = 1)
 
-Forces = -tape.gradient(Energy, RinputSmall)
+# Forces = -tape.gradient(Energy, RinputSmall)
 
 
