@@ -430,6 +430,55 @@ class fmmLayerExact(tf.keras.layers.Layer):
 
     return fmm 
 
+class fmmLayerExpTrainable(tf.keras.layers.Layer):
+  # this layers uses a few kernels to approximate exp(-mu)
+  # we add a wrong mu, but we let it evolve freely.
+  def __init__(self, Ncells, Np):
+    super(fmmLayerExpTrainable, self).__init__()
+    self.Ncells = Ncells
+    self.Np = Np 
+
+  def build(self, input_shape):
+
+    # we let the mu to be trained
+
+    self.mu = self.add_weight("mu",
+                       initializer=tf.initializers.ones(),
+                       shape=[1,])
+
+    self.std = []
+    for ii in range(4):
+      self.std.append(self.add_weight("std_"+str(ii),
+                       initializer=tf.initializers.ones(),
+                       shape=[1,]))
+
+    self.bias = []
+    for ii in range(4):
+      self.bias.append(self.add_weight("bias_"+str(ii),
+                       initializer=tf.initializers.zeros(),
+                       shape=[1,]))
+
+
+  @tf.function
+  def call(self, input):
+    ExtCoords =  genDistLongRangeFull(input, self.Ncells, self.Np, 
+                                      [0.0, 0.0], [1.0, 1.0]) # this are hard coded
+    
+    kernelApp = []
+
+    kernelApp.append(tf.abs(self.std[0])*(
+                     tf.expand_dims(tf.math.reciprocal(ExtCoords), axis = -1) - self.bias[0]))
+    kernelApp.append(tf.abs(self.std[1])*(
+                     tf.expand_dims(tf.sqrt(tf.math.reciprocal(ExtCoords)), axis = -1)- self.bias[1]))
+    kernelApp.append(tf.abs(self.std[2])*(
+                     tf.expand_dims(tf.square(tf.math.reciprocal(ExtCoords)), axis = -1)- self.bias[2]))
+    kernelApp.append(tf.abs(self.std[3])*(
+                     tf.expand_dims(tf.math.exp(-self.mu*ExtCoords), axis = -1)- self.bias[3]))
+
+    fmm = tf.reduce_sum(tf.concat(kernelApp, axis = -1), axis = 2)
+
+    return fmm 
+
 class fmmLayerWindow(tf.keras.layers.Layer):
   # in this case we window the close and long range using a window
   # we need a better window
