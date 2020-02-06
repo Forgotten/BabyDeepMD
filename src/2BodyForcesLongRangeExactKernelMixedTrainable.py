@@ -278,7 +278,7 @@ else:
 
 ## in the case we need to load an older saved model
 if loadFile: 
-  print("Loading the weights the model contained in %s"(loadFile), flush = True)
+  print("Loading the weights the model contained in %s"%(loadFile), flush = True)
   model.load_weights(loadFile)
 
 ## We use a decent training or a custom one if necessary
@@ -355,6 +355,8 @@ for cycle, (epochs, batchSizeL) in enumerate(zip(Nepochs, batchSizeArray)):
   print("saving the weights")
   model.save_weights(checkFile+"_cycle_"+str(cycle)+".h5")
 
+
+print( "values of the trainable decay %f" %(model.fmmLayerExpTrainable.mu.numpy()))
 
 ##### testing ######
 pointsTest, \
