@@ -669,6 +669,47 @@ def computePairWiseDist(points, Nsamples):
   return Pairwise
   
 
+class FFTLayer(tf.keras.layers.Layer):
+  # this layers uses a few kernels to approximate exp(-mu)
+  # and we add the exact mu to check if that becomes worse
+  def __init__(self, nChannels, Np, mu):
+    super(FFTLayer, self).__init__()
+    self.nChannels = nChannels
+    self.Np = Np 
+    self.mu = mu
+    self.xLims = xLims
+    # we need to define a mesh (to be reshaped)
+    self.mesh = tf.constant(np.linspace(xLims[0], xLims[1], Np+1)[:-1], 
+                dtype = tf.float32)
+
+
+  def build(self, input_shape):
+
+    # we initialize the channel multipliers
+    self.multChannels = []
+    for ii in range(self.nChannels):
+      self.multChannels.append(self.add_weight("multiplier_"+str(ii),
+                       initializer=tf.initializers.glorot_uniform(),
+                       shape=[1,]))
+
+
+  @tf.function
+  def call(self, input):
+    # we need to add an iterpolation step
+    # this needs to be perodic distance!!!
+    diff = tf.expand_dims(input. -1) - self.mesh
+    gaussian = tf.reduce_sum(gaussian(diff, self.sigma), dim = -1) 
+
+    rfft = tf.signal.rfft(input)
+    #mult = 
+
+    return fmm 
+
+
+@tf.function 
+def gaussian(x, sigma)
+  return tf.reciprocal(tf.sqrt(2*np.pi*sigma))*tf.exp( -0.5*tf.square(x/sigma))
+
 
 
 
