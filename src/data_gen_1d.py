@@ -100,15 +100,19 @@ def forcesYukawa(x, y, mu):
 	return 	mu*np.sign(y - x)*np.exp(-mu*np.abs(y - x))/np.abs(y - x) + np.sign(y - x)*np.exp(-mu*np.abs(y - x))/np.square(np.abs(y - x))
 
 
-def genDataYukawa(Ncells, Np, sigma, Nsamples, minDelta = 0.0): 
+def genDataYukawa(Ncells, Np, sigma, Nsamples, minDelta = 0.0, Lcell = 0.0): 
 
 	pointsArray = np.zeros((Nsamples, Np*Ncells))
 	potentialArray = np.zeros((Nsamples,1))
 	forcesArray = np.zeros((Nsamples, Np*Ncells))
 
 	for i in range(Nsamples):
-		sizeCell = 1/Ncells
-		midPoints = np.linspace(sizeCell/2.0,1-sizeCell/2.0, Ncells)
+		if Lcell == 0.0 :
+			sizeCell = 1/Ncells
+		else :
+			sizeCell = Lcell
+
+		midPoints = np.linspace(sizeCell/2.0,Ncells*sizeCell-sizeCell/2.0, Ncells)
 
 		points = midPoints + sizeCell*(np.random.rand(Np, Ncells) -0.5)
 		points = np.sort(points.reshape((-1,1)), axis = 0)
@@ -128,6 +132,7 @@ def genDataYukawa(Ncells, Np, sigma, Nsamples, minDelta = 0.0):
 		potentialArray[i,:] = potTotal
 
 		F = forcesYukawa(points,points.T,sigma)
+		F = np.triu(F,1) + np.tril(F,-1)
 
 		Forces = np.sum(F, axis = 1) 
 

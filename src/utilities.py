@@ -604,14 +604,16 @@ class expSumLayer(tf.keras.layers.Layer):
 
 
 @tf.function
-def train_step(model, optimizer, loss, inputs, outputsE):
+def train_step(model, optimizer, loss, 
+               inputs, outputsE,
+               weightE):
 # funtion to perform one training step
   with tf.GradientTape() as tape:
     # we use the model the predict the outcome
     predE = model(inputs, training=True)
 
     # fidelity loss usin mse
-    total_loss = loss(predE, outputsE)
+    total_loss = weightE*loss(predE, outputsE)
 
   # compute the gradients of the total loss with respect to the trainable variables
   gradients = tape.gradient(total_loss, model.trainable_variables)
@@ -672,43 +674,66 @@ def computePairWiseDist(points, Nsamples):
 class FFTLayer(tf.keras.layers.Layer):
   # this layers uses a few kernels to approximate exp(-mu)
   # and we add the exact mu to check if that becomes worse
-  def __init__(self, nChannels, Np, mu):
+  def __init__(self, nChannels, NpointsMesh, sigma, xLims):
     super(FFTLayer, self).__init__()
     self.nChannels = nChannels
-    self.Np = Np 
-    self.mu = mu
+    self.NpointsMesh = NpointsMesh 
+    self.sigma = sigma  # the size of the mollifications
     self.xLims = xLims
     # we need to define a mesh (to be reshaped)
-    self.mesh = tf.constant(np.linspace(xLims[0], xLims[1], Np+1)[:-1], 
+    self.mesh = tf.constant(np.linspace(xLims[0], xLims[1], NpointsMesh+1)[:-1], 
                 dtype = tf.float32)
-
 
   def build(self, input_shape):
 
+    print("building the channels")
     # we initialize the channel multipliers
-    self.multChannels = []
-    for ii in range(self.nChannels):
-      self.multChannels.append(self.add_weight("multiplier_"+str(ii),
-                       initializer=tf.initializers.glorot_uniform(),
-                       shape=[1,]))
-
+    self.multChannels= self.add_weight("multipliers",
+                       initializer=tf.initializers.GlorotNormal(),
+                       shape=[1,1,self.nChannels,self.NpointsMesh//2+1])
+    # this needs to be properly initialized it, otherwise it won't even be enough
 
   @tf.function
   def call(self, input):
     # we need to add an iterpolation step
     # this needs to be perodic distance!!!
-    diff = tf.expand_dims(input. -1) - self.mesh
-    gaussian = tf.reduce_sum(gaussian(diff, self.sigma), dim = -1) 
+    # (batch_size, Np*Ncells)
+    diff = tf.expand_dims(input, -1) - tf.reshape(self.mesh, (1,1, self.NpointsMesh))
+    # (batch_size, Np*Ncells, NpointsMesh)
+    # we compute all the localized gaussians
+    array_gaussian = gaussian(diff, self.sigma)
+    # we add them together
+    arrayReducGaussian = tf.reduce_sum(array_gaussian, axis = 1) 
+    # (batch_size, NpointsMesh) (we sum the gaussians together)
+    # we apply the fft
+    print("computing the FFT")
+    rfft = tf.expand_dims(tf.signal.rfft(arrayReducGaussian), 1)
+    # Fourier multipliers
 
-    rfft = tf.signal.rfft(input)
+    Rerfft = tf.math.real(rfft)
+    Imrfft = tf.math.imag(rfft)
+
+    print("applying the multipliers")
+    # multfft = tf.multiply(self.multChannels*rfft)
+    multRefft = tf.multiply(self.multChannels,Rerfft)
+    multImfft = tf.multiply(self.multChannels,Imrfft)
+
+    multfft = tf.squeeze(tf.complex(multRefft, multImfft), axis = 0)
+    print(multfft.shape)
+    print("inverse fft")
+    irfft = tf.expand_dims(tf.signal.irfft(multfft), 2)
+
+    local= irfft*tf.expand_dims(array_gaussian, 1)
+    
+    fmm = tf.reduce_sum(local, axis = -1)
     #mult = 
 
     return fmm 
 
 
 @tf.function 
-def gaussian(x, sigma)
-  return tf.reciprocal(tf.sqrt(2*np.pi*sigma))*tf.exp( -0.5*tf.square(x/sigma))
+def gaussian(x, sigma):
+  return tf.math.reciprocal(tf.sqrt(2*np.pi*sigma))*tf.exp( -0.5*tf.square(x/sigma))
 
 
 
