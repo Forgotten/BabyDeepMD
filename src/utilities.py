@@ -688,9 +688,15 @@ class FFTLayer(tf.keras.layers.Layer):
 
     print("building the channels")
     # we initialize the channel multipliers
-    self.multChannels= self.add_weight("multipliers",
-                       initializer=tf.initializers.GlorotNormal(),
+    # we need to add a parametrized family in here
+    self.multChannelsRe= self.add_weight("multipliers",
+                       initializer=tf.initializers.zeros(),
                        shape=[1,1,self.nChannels,self.NpointsMesh//2+1])
+
+    self.multChannelsIm= self.add_weight("multipliers",
+                       initializer=tf.initializers.zeros(),
+                       shape=[1,1,self.nChannels,self.NpointsMesh//2+1])
+
     # this needs to be properly initialized it, otherwise it won't even be enough
 
   @tf.function
@@ -715,10 +721,14 @@ class FFTLayer(tf.keras.layers.Layer):
 
     print("applying the multipliers")
     # multfft = tf.multiply(self.multChannels*rfft)
-    multRefft = tf.multiply(self.multChannels,Rerfft)
-    multImfft = tf.multiply(self.multChannels,Imrfft)
+    multReRefft = tf.multiply(self.multChannelsRe,Rerfft)
+    multReImfft = tf.multiply(self.multChannelsIm,Rerfft)
+    multImImfft = tf.multiply(self.multChannelsIm,Imrfft)
+    multImRefft = tf.multiply(self.multChannelsRe,Imrfft)
 
-    multfft = tf.squeeze(tf.complex(multRefft, multImfft), axis = 0)
+    multfft = tf.squeeze(tf.complex(multReRefft-multImImfft, \
+                                    multReImfft+multImRefft), axis = 0)
+
     print(multfft.shape)
     print("inverse fft")
     irfft = tf.expand_dims(tf.signal.irfft(multfft), 2)

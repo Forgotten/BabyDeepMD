@@ -17,6 +17,9 @@ from utilities import genDistLongRangeFull
 from utilities import MyDenseLayer, pyramidLayer
 from utilities import pyramidLayerNoBias, FFTLayer
 
+import os
+
+os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
 nameScript = sys.argv[0].split('/')[-1]
 
@@ -114,15 +117,15 @@ if loadFile:
   potMean = data["potMean"]
   potStd = data["potStd"]
 else: 
-  potMean = np.mean(potentialArray)
-  potStd = np.std(potentialArray)
+  forcesMean = np.mean(forcesArray)
+  forcesStd = np.std(forcesArray)
 
-print("mean of the potential is %.8f"%(potMean))
-print("std of the potential is %.8f"%(potStd))
+print("mean of the forces is %.8f"%(forcesMean))
+print("std of the forces is %.8f"%(forcesStd))
 
-potentialArray -= potMean
-potentialArray /= potStd
-forcesArray /= potStd
+potentialArray /= forcesStd
+forcesArray -= forcesMean
+forcesArray /= forcesStd
 
 # positions of the 
 Rinput = tf.Variable(pointsArray, name="input", dtype = tf.float32)
