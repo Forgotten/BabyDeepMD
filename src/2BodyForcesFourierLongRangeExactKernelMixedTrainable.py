@@ -218,9 +218,9 @@ class DeepMDsimpleForces(tf.keras.Model):
     self.stdLongRange = stdLongRange
     # we may need to use the tanh here
     self.layerPyramid   = pyramidLayer(descripDim, 
-                                       actfn = tf.nn.relu)
+                                       actfn = tf.nn.tanh)
     self.layerPyramidInv  = pyramidLayer(descripDim, 
-                                       actfn = tf.nn.relu)
+                                       actfn = tf.nn.tanh)
 
     # layer to apply the fmm (this is already windowed)
     self.FFTLayer = FFTLayer(fftChannels, NpointsFourier, sigmaFFT, xLims)
@@ -229,52 +229,69 @@ class DeepMDsimpleForces(tf.keras.Model):
                                        actfn = tf.nn.relu)
     
     # we may need to use the tanh especially here
-    self.fittingNetwork = pyramidLayer(fittingDim, 
+    self.fittingNetworkLongRange = pyramidLayer(fittingDim, 
                                        actfn = tf.nn.relu)
+    self.linfitNetLongRange      = MyDenseLayer(1) 
+
+    # we may need to use the tanh especially here
+    self.fittingNetwork = pyramidLayer(fittingDim, 
+                                       actfn = tf.nn.tanh)
     self.linfitNet      = MyDenseLayer(1)    
 
   @tf.function
   def call(self, inputs):
 
-    # (Nsamples, Ncells*Np)
-    genCoordinates = genDistInv(inputs, self.Ncells, self.Np, 
-                                self.av, self.std)
-    # (Nsamples*Ncells*Np*(3*Np - 1), 2)
-    L1   = self.layerPyramid(genCoordinates[:,1:])*genCoordinates[:,1:]
-    # (Nsamples*Ncells*Np*(3*Np - 1), descriptorDim)
-    L2   = self.layerPyramidInv(genCoordinates[:,0:1])*genCoordinates[:,0:-1]
-    # (Nsamples*Ncells*Np*(3*Np - 1), descriptorDim)
+    ## computing Short Range Forces
+    with tf.GradientTape() as tape:
+      # we watch the inputs 
 
+      tape.watch(inputs)
+      # (Nsamples, Ncells*Np)
+      genCoordinates = genDistInv(inputs, self.Ncells, self.Np, 
+                                  self.av, self.std)
+      # (Nsamples*Ncells*Np*(3*Np - 1), 2)
+      L1   = self.layerPyramid(genCoordinates[:,1:])*genCoordinates[:,1:]
+      # (Nsamples*Ncells*Np*(3*Np - 1), descriptorDim)
+      L2   = self.layerPyramidInv(genCoordinates[:,0:1])*genCoordinates[:,0:-1]
+      # (Nsamples*Ncells*Np*(3*Np - 1), descriptorDim)
+
+      # (Nsamples*Ncells*Np*(3*Np - 1), descriptorDim)
+      LL = tf.concat([L1, L2], axis = 1)
+      # (Nsamples*Ncells*Np*(3*Np - 1), 2*descriptorDim)
+      Dtemp = tf.reshape(LL, (-1, 3*self.Np-1, 
+                              2*self.descriptorDim ))
+      # (Nsamples*Ncells*Np, (3*Np - 1), 2*descriptorDim)
+      DShortRange = tf.reduce_sum(Dtemp, axis = 1)
+      # (Nsamples*Ncells*Np, 2*descriptorDim)
+  
+      F2 = self.fittingNetwork(DShortRange)
+      F = self.linfitNet(F2)
+      # (Nsamples*Ncells*Np, 1)
+
+      Energy = tf.reduce_sum(tf.reshape(F, (-1, self.Ncells*self.Np)),
+                              keepdims = True, axis = 1)
+
+    ForcesShort = -tape.gradient(Energy, inputs)
+  
+    #####################   We compute the long range interactions 
     # we compute the FMM and the normalize by the number of particules
     longRangewCoord = self.FFTLayer(inputs)
     # (Nsamples, Ncells*Np, 4) # we are only using 4 kernels
-    # we normalize the output of the fmm layer before feeding them to network
+    # Shall we normalize them? 
     #longRangewCoord2 = (tf.reshape(longRangewCoord, (-1, self.fftChannels))-self.meanLongRange)/self.stdLongRange
-    
     # reshaping
     longRangewCoord2 = tf.reshape(longRangewCoord, (-1, self.fftChannels))
-
+  
     # (Nsamples*Ncells*Np, 1)
-    L3   = self.layerPyramidLongRange(longRangewCoord2)
+    DLongRange   = self.layerPyramidLongRange(longRangewCoord2)
     # (Nsamples*Ncells*Np, descriptorDim)
 
-    # (Nsamples*Ncells*Np*(3*Np - 1), descriptorDim)
-    LL = tf.concat([L1, L2], axis = 1)
-    # (Nsamples*Ncells*Np*(3*Np - 1), 2*descriptorDim)
-    Dtemp = tf.reshape(LL, (-1, 3*self.Np-1, 
-                            2*self.descriptorDim ))
-    # (Nsamples*Ncells*Np, (3*Np - 1), 2*descriptorDim)
-    D = tf.reduce_sum(Dtemp, axis = 1)
-    # (Nsamples*Ncells*Np, 2*descriptorDim)
+    F2Long = self.fittingNetworkLongRange(DLongRange)
 
-    DLongRange = tf.concat([D, L3], axis = 1)
+    ForcesLong = tf.reshape(self.linfitNetLongRange(F2Long), (-1, self.Ncells*self.Np))
 
-    F2 = self.fittingNetwork(DLongRange)
-    F = self.linfitNet(F2)
-    # (Nsamples*Ncells*Np, 1)
-
-    Forces = tf.reshape(F, (-1, self.Ncells*self.Np))
-    
+    Forces = ForcesShort + ForcesLong
+  
     return  Forces
 
 ## Defining the model
@@ -288,17 +305,17 @@ model = DeepMDsimpleForces(Np, Ncells,
 F = model(Rinput[0:10,:])
 model.summary()
 
-# # Create checkpointing directory if necessary
-# if not os.path.exists(checkFolder):
-#     os.mkdir(checkFolder)
-#     print("Directory " , checkFolder ,  " Created ")
-# else:    
-#     print("Directory " , checkFolder ,  " already exists :)")
+# Create checkpointing directory if necessary
+if not os.path.exists(checkFolder):
+    os.mkdir(checkFolder)
+    print("Directory " , checkFolder ,  " Created ")
+else:    
+    print("Directory " , checkFolder ,  " already exists :)")
 
-# ## in the case we need to load an older saved model
-# if loadFile: 
-#   print("Loading the weights the model contained in %s"%(loadFile), flush = True)
-#   model.load_weights(loadFile)
+## in the case we need to load an older saved model
+if loadFile: 
+  print("Loading the weights the model contained in %s"%(loadFile), flush = True)
+  model.load_weights(loadFile)
 
 ## We use a decent training or a custom one if necessary
 if type(Nepochs) is not list:
