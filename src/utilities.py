@@ -747,4 +747,120 @@ def gaussian(x, sigma):
 
 
 
+class NUFFTLayer(tf.keras.layers.Layer):
+  # this layers uses a few kernels to approximate exp(-mu)
+  # and we add the exact mu to check if that becomes worse
+  def __init__(self, nChannels, NpointsMesh, tau, xLims):
+    super(NUFFTLayer, self).__init__()
+    self.nChannels = nChannels
+    self.NpointsMesh = NpointsMesh 
+    assert NpointsMesh % 2 == 1
+    self.tau = tau  # the size of the mollifications
+    self.xLims = xLims
+    # we need the number of points to be odd 
+    self.kGrid = tf.constant(np.linspace(-(NpointsMesh//2), NpointsMesh//2, NpointsMesh), 
+                dtype = tf.float32)
+    self.L = np.abs(xLims[1] - xLims[0])
+    # we need to define a mesh betwen 0 and 2pi
+    self.xGrid = 2*np.pi*tf.constant(np.linspace(xLims[0], xLims[1], NpointsMesh+1)[:-1], 
+                dtype = tf.float32)/(self.L)
+
+
+  def build(self, input_shape):
+
+    print("building the channels")
+    # we initialize the channel multipliers
+    # we need to add a parametrized family in here
+    self.shift = []
+    for ii in range(1):
+      self.shift.append(self.add_weight("std_"+str(ii),
+                       initializer=tf.initializers.ones(),
+                       shape=[1,]))
+
+    self.amplitud = []
+    for ii in range(1):
+      self.amplitud.append(self.add_weight("bias_"+str(ii),
+                       initializer=tf.initializers.ones(),
+                       shape=[1,]))
+
+
+
+    # this needs to be properly initialized it, otherwise it won't even be enough
+
+  @tf.function
+  def call(self, input):
+    # we need to add an iterpolation step
+    # this needs to be perodic distance!!!
+    # (batch_size, Np*Ncells)
+    diff = tf.expand_dims(input*2*np.pi/self.L, -1) - tf.reshape(self.xGrid, (1,1, self.NpointsMesh))
+    # (batch_size, Np*Ncells, NpointsMesh)
+    # we compute all the localized gaussians
+    array_gaussian = gaussian(diff, self.tau)
+    # we add them together
+    arrayReducGaussian = tf.complex(tf.reduce_sum(array_gaussian, axis = 1), 0.0)
+    # (batch_size, NpointsMesh) (we sum the gaussians together)
+    # we apply the fft
+    print("computing the FFT")
+
+    fftGauss = tf.signal.fftshift(tf.signal.fft(arrayReducGaussian))*self.L/(2*np.pi)
+    #(batch_size, NpointsMesh)
+    Deconv = tf.complex(tf.expand_dims(gaussianDeconv(self.kGrid, self.tau), 0),0.0)
+    #(1, NpointsMesh)
+
+    rfft = tf.multiply(fftGauss, Deconv)
+    #(batch_size, NpointsMesh)
+    # we are only using one channel
+    #rfft = tf.expand_dims(rfftDeconv, 1)
+    # Fourier multipliers
+
+    Rerfft = tf.math.real(rfft)
+    Imrfft = tf.math.imag(rfft)
+
+    print("applying the multipliers")d
+
+    multiplier = tf.expand_dims(self.amplitud[0]*4*np.pi*\
+                                tf.math.reciprocal( tf.square(self.kGrid) + \
+                                tf.square(10*self.shift[0])), 0)
+    multiplierRe = tf.math.real(multiplier)
+    multiplierIm = tf.math.imag(multiplier)
+
+    # multfft = tf.multiply(self.multChannels*rfft)
+    multReRefft = tf.multiply(multiplierRe,Rerfft)
+    multReImfft = tf.multiply(multiplierIm,Rerfft)
+    multImImfft = tf.multiply(multiplierIm,Imrfft)
+    multImRefft = tf.multiply(multiplierRe,Imrfft)
+
+    multfft = tf.complex(multReRefft-multImImfft, \
+                                    multReImfft+multImRefft)
+
+    multfftDeconv = tf.multiply(multfft, Deconv)
+
+    print(multfft.shape)
+    print("inverse fft")
+    irfft = tf.math.real(tf.expand_dims(tf.signal.ifft(tf.signal.ifftshift(multfftDeconv)), 1))
+
+    local = irfft*array_gaussian
+    
+    fmm = tf.reduce_sum(local, axis = -1)/self.NpointsMesh
+    #mult = 
+
+    return fmm 
+
+
+# periodic spreading of the functions (not sure if this works all the time)
+@tf.function 
+def gaussianPer(x, tau):
+  return tf.exp( -tf.square(x)/(4*tau)) + \
+         tf.exp( -tf.square(x - 2*np.pi)/(4*tau)) + \
+         tf.exp( -tf.square(x + 2*np.pi)/(4*tau))
+
+@tf.function 
+def gaussian(x, tau):
+  return tf.exp( -tf.square(x)/(4*tau)) 
+
+@tf.function 
+def gaussianDeconv(k, tau):
+  return tf.sqrt(np.pi/tau)*tf.exp(tf.square(k)*tau)
+
+
 
