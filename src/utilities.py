@@ -817,7 +817,7 @@ class NUFFTLayer(tf.keras.layers.Layer):
     Rerfft = tf.math.real(rfft)
     Imrfft = tf.math.imag(rfft)
 
-    print("applying the multipliers")d
+    print("applying the multipliers")
 
     multiplier = tf.expand_dims(self.amplitud[0]*4*np.pi*\
                                 tf.math.reciprocal( tf.square(self.kGrid) + \
