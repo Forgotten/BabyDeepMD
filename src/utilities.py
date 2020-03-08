@@ -683,18 +683,19 @@ class FFTLayer(tf.keras.layers.Layer):
     # we need to define a mesh (to be reshaped)
     self.mesh = tf.constant(np.linspace(xLims[0], xLims[1], NpointsMesh+1)[:-1], 
                 dtype = tf.float32)
+    self.h = (xLims[1]- xLims[0] +0.0)/NpointsMesh
 
   def build(self, input_shape):
 
     print("building the channels")
     # we initialize the channel multipliers
     # we need to add a parametrized family in here
-    self.multChannelsRe= self.add_weight("multipliers",
-                       initializer=tf.initializers.zeros(),
+    self.multChannelsRe= self.add_weight("multipliersRe",
+                       initializer=tf.initializers.RandomUniform(),
                        shape=[1,1,self.nChannels,self.NpointsMesh//2+1])
 
-    self.multChannelsIm= self.add_weight("multipliers",
-                       initializer=tf.initializers.zeros(),
+    self.multChannelsIm= self.add_weight("multipliersIm",
+                       initializer=tf.initializers.RandomUniform(),
                        shape=[1,1,self.nChannels,self.NpointsMesh//2+1])
 
     # this needs to be properly initialized it, otherwise it won't even be enough
@@ -712,14 +713,14 @@ class FFTLayer(tf.keras.layers.Layer):
     arrayReducGaussian = tf.reduce_sum(array_gaussian, axis = 1) 
     # (batch_size, NpointsMesh) (we sum the gaussians together)
     # we apply the fft
-    print("computing the FFT")
+    # print("computing the FFT")
     rfft = tf.expand_dims(tf.signal.rfft(arrayReducGaussian), 1)
     # Fourier multipliers
 
     Rerfft = tf.math.real(rfft)
     Imrfft = tf.math.imag(rfft)
 
-    print("applying the multipliers")
+    # print("applying the multipliers")
     # multfft = tf.multiply(self.multChannels*rfft)
     multReRefft = tf.multiply(self.multChannelsRe,Rerfft)
     multReImfft = tf.multiply(self.multChannelsIm,Rerfft)
@@ -729,13 +730,13 @@ class FFTLayer(tf.keras.layers.Layer):
     multfft = tf.squeeze(tf.complex(multReRefft-multImImfft, \
                                     multReImfft+multImRefft), axis = 0)
 
-    print(multfft.shape)
-    print("inverse fft")
+    # print(multfft.shape)
+    # print("inverse fft")
     irfft = tf.expand_dims(tf.signal.irfft(multfft), 2)
 
     local= irfft*tf.expand_dims(array_gaussian, 1)
     
-    fmm = tf.reduce_sum(local, axis = -1)
+    fmm = tf.reduce_sum(local, axis = -1)*self.h
     #mult = 
 
     return fmm 
