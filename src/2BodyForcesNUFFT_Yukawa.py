@@ -398,46 +398,46 @@ for cycle, (epochs, batchSizeL) in enumerate(zip(Nepochs, batchSizeArray)):
 # print("Relative Error in the forces is " +str(err.numpy()))
 
 
-with tf.GradientTape() as tape:
-  # we watch the inputs 
-  tape.watch(Rinput)
-  # (Nsamples, Ncells*Np)
-  # in this case we are only considering the distances
-  genCoordinates = genDistInv(Rinput, model.Ncells, model.Np, 
-                              model.av, model.std)
-  # (Nsamples*Ncells*Np*(3*Np - 1), 2)
-  L1   = model.layerPyramid(genCoordinates[:,1:])*genCoordinates[:,1:]
-  # (Nsamples*Ncells*Np*(3*Np - 1), descriptorDim)
-  L2   = model.layerPyramidInv(genCoordinates[:,0:1])*genCoordinates[:,0:-1]
-  # (Nsamples*Ncells*Np*(3*Np - 1), descriptorDim)
-  # we compute the FMM and the normalize by the number of particules
-  longRangewCoord = model.NUFFTLayer(Rinput)
-  # (Nsamples, Ncells*Np, 1) # we are only using 4 kernels
-  # we normalize the output of the fmm layer before feeding them to network
-  longRangewCoord2 = tf.reshape(longRangewCoord, (-1, model.fftChannels))
-  # (Nsamples*Ncells*Np, 1)
-  L3   = model.layerPyramidLongRange(longRangewCoord2)
-  # (Nsamples*Ncells*Np, descriptorDim)
+# with tf.GradientTape() as tape:
+#   # we watch the inputs 
+#   tape.watch(Rinput)
+#   # (Nsamples, Ncells*Np)
+#   # in this case we are only considering the distances
+#   genCoordinates = genDistInv(Rinput, model.Ncells, model.Np, 
+#                               model.av, model.std)
+#   # (Nsamples*Ncells*Np*(3*Np - 1), 2)
+#   L1   = model.layerPyramid(genCoordinates[:,1:])*genCoordinates[:,1:]
+#   # (Nsamples*Ncells*Np*(3*Np - 1), descriptorDim)
+#   L2   = model.layerPyramidInv(genCoordinates[:,0:1])*genCoordinates[:,0:-1]
+#   # (Nsamples*Ncells*Np*(3*Np - 1), descriptorDim)
+#   # we compute the FMM and the normalize by the number of particules
+#   longRangewCoord = model.NUFFTLayer(Rinput)
+#   # (Nsamples, Ncells*Np, 1) # we are only using 4 kernels
+#   # we normalize the output of the fmm layer before feeding them to network
+#   longRangewCoord2 = tf.reshape(longRangewCoord, (-1, model.fftChannels))
+#   # (Nsamples*Ncells*Np, 1)
+#   L3   = model.layerPyramidLongRange(longRangewCoord2)
+#   # (Nsamples*Ncells*Np, descriptorDim)
 
-  # (Nsamples*Ncells*Np*(3*Np - 1), descriptorDim)
-  LL = tf.concat([L1, L2], axis = 1)
-  # (Nsamples*Ncells*Np*(3*Np - 1), 2*descriptorDim)
-  Dtemp = tf.reshape(LL, (-1, 3*model.Np-1, 
-                          2*model.descriptorDim ))
-  # (Nsamples*Ncells*Np, (3*Np - 1), 2*descriptorDim)
-  D = tf.reduce_sum(Dtemp, axis = 1)
-  # (Nsamples*Ncells*Np, 2*descriptorDim)
+#   # (Nsamples*Ncells*Np*(3*Np - 1), descriptorDim)
+#   LL = tf.concat([L1, L2], axis = 1)
+#   # (Nsamples*Ncells*Np*(3*Np - 1), 2*descriptorDim)
+#   Dtemp = tf.reshape(LL, (-1, 3*model.Np-1, 
+#                           2*model.descriptorDim ))
+#   # (Nsamples*Ncells*Np, (3*Np - 1), 2*descriptorDim)
+#   D = tf.reduce_sum(Dtemp, axis = 1)
+#   # (Nsamples*Ncells*Np, 2*descriptorDim)
 
-  DLongRange = tf.concat([D, L3], axis = 1)
+#   DLongRange = tf.concat([D, L3], axis = 1)
 
-  F2 = model.fittingNetwork(DLongRange)
-  F = model.linfitNet(F2)
+#   F2 = model.fittingNetwork(DLongRange)
+#   F = model.linfitNet(F2)
 
-  Energy = tf.reduce_sum(tf.reshape(F, (-1, model.Ncells*model.Np)),
-                          keepdims = True, axis = 1)
+#   Energy = tf.reduce_sum(tf.reshape(F, (-1, model.Ncells*model.Np)),
+#                           keepdims = True, axis = 1)
 
-Forces = -tape.gradient(Energy, inputs)
+# Forces = -tape.gradient(Energy, inputs)
 
-return Forces
+# return Forces
 
 
