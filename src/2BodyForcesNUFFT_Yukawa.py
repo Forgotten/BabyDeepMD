@@ -384,7 +384,7 @@ for cycle, (epochs, batchSizeL) in enumerate(zip(Nepochs, batchSizeArray)):
 ##### testing ######
 pointsTest, \
 potentialTest, \
-forcesTest  = gen_data(Ncells, Np, mu, 1000, minDelta, Lcell)
+forcesTest  =  genDataYukawa(Ncells, Np, mu, 1000, minDelta, Lcell)
 
 potentialTestRscl = potentialTest - potMean
 potentialTestRscl /= potStd
