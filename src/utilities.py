@@ -968,6 +968,129 @@ class NUFFTLayerMultiChannel(tf.keras.layers.Layer):
     return fmm 
 
 
+
+class NUFFTLayerMultiChannelInit(tf.keras.layers.Layer):
+  # this layers uses a few kernels to approximate exp(-mu)
+  # and we add the exact mu to check if that becomes worse
+  def __init__(self, nChannels, NpointsMesh, tau, xLims, mu0 = 1.0):
+    super(NUFFTLayerMultiChannelInit, self).__init__()
+    self.nChannels = nChannels
+    self.NpointsMesh = NpointsMesh 
+    self.mu0 = mu0
+    assert NpointsMesh % 2 == 1
+    self.tau = tau  # the size of the mollifications
+    self.xLims = xLims
+    # we need the number of points to be odd 
+    self.kGrid = tf.constant(np.linspace(-(NpointsMesh//2), NpointsMesh//2, NpointsMesh), 
+                dtype = tf.float32)
+    self.L = np.abs(xLims[1] - xLims[0])
+    # we need to define a mesh betwen 0 and 2pi
+    self.xGrid = 2*np.pi*tf.constant(np.linspace(xLims[0], xLims[1], NpointsMesh+1)[:-1], 
+                dtype = tf.float32)/(self.L)
+
+
+  def build(self, input_shape):
+
+    print("building the channels")
+    # we initialize the channel multipliers
+    # we need to add a parametrized family in here
+    mu0 = tf.constant(self.mu0, dtype=tf.float32)
+
+    xExp = tf.expand_dims(4*np.pi*tf.math.reciprocal(tf.square(self.kGrid) + \
+                                  tf.square(mu0)), 0)
+
+    initKExp = tf.keras.initializers.Constant(xExp.numpy())
+
+    xExp2 = tf.expand_dims(4*np.pi*tf.math.reciprocal(tf.square(self.kGrid) + \
+                                  tf.square(1.0)), 0)
+
+    initKExp2 = tf.keras.initializers.Constant(xExp2.numpy())
+
+    self.multipliersRe = []
+    self.multipliersIm = []
+
+    self.multipliersRe.append(self.add_weight("multRe_0",
+                       initializer=initKExp))
+    self.multipliersIm.append(self.add_weight("multIm_0",
+                       initializer=tf.initializers.zeros(), 
+                        shape = xExp.shape.numpy()))
+
+    self.multipliersRe.append(self.add_weight("multRe_1",
+                       initializer=initKExp2))
+    self.multipliersIm.append(self.add_weight("multIm_1",
+                       initializer=tf.initializers.zeros(), 
+                        shape = xExp2.shape.numpy()))
+
+
+    # this needs to be properly initialized it, otherwise it won't even be enough
+
+  @tf.function
+  def call(self, input):
+    # we need to add an iterpolation step
+    # this needs to be perodic distance!!!
+    # (batch_size, Np*Ncells)
+    diff = tf.expand_dims(input*2*np.pi/self.L, -1) - tf.reshape(self.xGrid, (1,1, self.NpointsMesh))
+    # (batch_size, Np*Ncells, NpointsMesh)
+    # we compute all the localized gaussians
+    array_gaussian = gaussian(diff, self.tau)
+    # we add them together
+    arrayReducGaussian = tf.complex(tf.reduce_sum(array_gaussian, axis = 1), 0.0)
+    # (batch_size, NpointsMesh) (we sum the gaussians together)
+    # we apply the fft
+    print("computing the FFT")
+
+    fftGauss = tf.signal.fftshift(tf.signal.fft(arrayReducGaussian))*self.L/(2*np.pi)
+    #(batch_size, NpointsMesh)
+    Deconv = tf.complex(tf.expand_dims(gaussianDeconv(self.kGrid, self.tau), 0),0.0)
+    #(1, NpointsMesh)
+
+    rfft = tf.multiply(fftGauss, Deconv)
+    #(batch_size, NpointsMesh)
+    # we are only using one channel
+    #rfft = tf.expand_dims(rfftDeconv, 1)
+    # Fourier multipliers
+
+    Rerfft = tf.math.real(rfft)
+    Imrfft = tf.math.imag(rfft)
+
+    print("applying the multipliers")
+
+    # multfft = tf.multiply(self.multChannels*rfft)
+    multReRefft = tf.multiply(self.multipliersRe[0],Rerfft)
+    multReImfft = tf.multiply(self.multipliersIm[0],Rerfft)
+    multImImfft = tf.multiply(self.multipliersRe[0],Imrfft)
+    multImRefft = tf.multiply(self.multipliersIm[0],Imrfft)
+
+    multfft = tf.expand_dims(tf.complex(multReRefft-multImImfft, \
+                                        multReImfft+multImRefft),1)
+
+    # multfft = tf.multiply(self.multChannels*rfft)
+    multReRefft2 = tf.multiply(self.multipliersRe[1],Rerfft)
+    multReImfft2 = tf.multiply(self.multipliersIm[1],Rerfft)
+    multImImfft2 = tf.multiply(self.multipliersRe[1],Imrfft)
+    multImRefft2 = tf.multiply(self.multipliersIm[1],Imrfft)
+
+    multfft2 = tf.expand_dims(tf.complex(multReRefft2-multImImfft2, \
+                          multReImfft2+multImRefft2), 1)
+
+    multFFT = tf.concat([multfft, multfft2], axis = 1)
+
+
+    multfftDeconv = tf.multiply(multFFT, tf.expand_dims(Deconv,1))
+
+    print(multfft.shape)
+    print("inverse fft")
+    irfft = tf.math.real(tf.expand_dims(tf.signal.ifft(tf.signal.ifftshift(multfftDeconv)), 1))
+
+    local = irfft*tf.expand_dims(array_gaussian, 2)
+    
+    fmm = tf.reduce_sum(local, axis = -1)/self.NpointsMesh
+    #mult = 
+
+    return fmm 
+
+
+
 # periodic spreading of the functions (not sure if this works all the time)
 @tf.function 
 def gaussianPer(x, tau):
