@@ -115,8 +115,8 @@ potentialArray = hf['potential'][:]
 if loadFile: 
   # if we are loading a file, the normalization needs to be 
   # properly defined 
-  potMean = data["potMean"]
-  potStd = data["potStd"]
+  forcesMean = data["forcesMean"]
+  forcesStd = data["forcesStd"]
 else: 
   forcesMean = np.mean(forcesArray)
   forcesStd = np.std(forcesArray)
@@ -390,9 +390,9 @@ pointsTest, \
 potentialTest, \
 forcesTest  = genDataYukawa(Ncells, Np, mu, 1000, minDelta, Lcell)
 
-potentialTestRscl = potentialTest - potMean
-potentialTestRscl /= potStd
-forcesTestRscl = forcesTest/potStd
+potentialTestRscl = potentialTest - forcesMean
+potentialTestRscl /= forcesStd
+forcesTestRscl = forcesTest/forcesStd
 
 forcePred = model(pointsTest)
 
