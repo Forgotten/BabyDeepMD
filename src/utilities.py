@@ -1010,16 +1010,16 @@ class NUFFTLayerMultiChannelInit(tf.keras.layers.Layer):
     self.multipliersIm = []
 
     self.multipliersRe.append(self.add_weight("multRe_0",
-                       initializer=initKExp))
+                       initializer=initKExp, shape = (1, self.NpointsMesh)))
     self.multipliersIm.append(self.add_weight("multIm_0",
                        initializer=tf.initializers.zeros(), 
-                        shape = xExp.shape.numpy()))
+                       shape = (1, self.NpointsMesh)))
 
     self.multipliersRe.append(self.add_weight("multRe_1",
-                       initializer=initKExp2))
+                       initializer=initKExp2, shape = (1, self.NpointsMesh)))
     self.multipliersIm.append(self.add_weight("multIm_1",
                        initializer=tf.initializers.zeros(), 
-                        shape = xExp2.shape.numpy()))
+                        shape = (1, self.NpointsMesh)))
 
 
     # this needs to be properly initialized it, otherwise it won't even be enough
@@ -1085,6 +1085,35 @@ class NUFFTLayerMultiChannelInit(tf.keras.layers.Layer):
     local = irfft*tf.expand_dims(array_gaussian, 2)
     
     fmm = tf.reduce_sum(local, axis = -1)/self.NpointsMesh
+    #mult = 
+
+    return fmm 
+
+
+class testInit(tf.keras.layers.Layer):
+  # this layers uses a few kernels to approximate exp(-mu)
+  # and we add the exact mu to check if that becomes worse
+  def __init__(self, dataInit):
+    super(testInit, self).__init__()
+    self.dataInit = dataInit
+
+
+  def build(self, input_shape):
+
+    init = tf.keras.initializer.Constant(self.dataInit)
+  
+    self.multipliersRe = []
+    self.multipliersRe.append(self.add_weight("multRe_0",
+                       initializer=init))
+
+
+
+    # this needs to be properly initialized it, otherwise it won't even be enough
+
+  @tf.function
+  def call(self, input):
+    
+    fmm = tf.multiply(self.multipliersRe[0], input)
     #mult = 
 
     return fmm 
