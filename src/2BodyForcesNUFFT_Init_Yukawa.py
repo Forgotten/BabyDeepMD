@@ -390,9 +390,8 @@ pointsTest, \
 potentialTest, \
 forcesTest  = genDataYukawa(Ncells, Np, mu, 1000, minDelta, Lcell)
 
-potentialTestRscl = potentialTest - forcesMean
-potentialTestRscl /= forcesStd
-forcesTestRscl = forcesTest/forcesStd
+forcesTestRscl =  forcesTest- forcesMean
+forcesTestRscl = forcesTestRscl/forcesStd
 
 forcePred = model(pointsTest)
 
