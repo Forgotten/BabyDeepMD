@@ -228,7 +228,7 @@ class DeepMDsimpleForces(tf.keras.Model):
       NpointsFourier, sigmaFFT, xLims, mu)
 
     self.layerPyramidLongRange  = pyramidLayer(descripDim, 
-                                       actfn = tf.nn.tanh)
+                                       actfn = tf.nn.relu)
     
     # we may need to use the tanh especially here
     self.fittingNetwork = pyramidLayer(fittingDim, 
