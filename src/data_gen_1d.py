@@ -194,7 +194,7 @@ def genDataYukawaPer(Ncells, Np, sigma, Nsamples, minDelta = 0.0, Lcell = 0.0):
 
 
 def gaussian(x, xCenter, tau):
-	return (1/np.sqrt(2*np.pi/tau))*\
+	return (1/np.sqrt(2*np.pi*tau**2))*\
 		   np.exp( -0.5*np.square(x - xCenter)/tau**2 )
 
 def computeDerPotPer(Nx, mu, Ls, xCenter = 0, nPointSmear = 10):
