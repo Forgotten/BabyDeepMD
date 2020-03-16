@@ -310,18 +310,16 @@ for cycle, (epochs, batchSizeL) in enumerate(zip(Nepochs, batchSizeArray)):
 ##### testing ######
 pointsTest, \
 potentialTest, \
-forcesTest  = gen_data(Ncells, Np, mu, 1000, minDelta, Lcell)
+forcesTest  = genDataYukawa(Ncells, Np, mu, 1000, minDelta, Lcell)
 
-potentialTestRscl = potentialTest - potMean
-potentialTestRscl /= potStd
-forcesTestRscl = forcesTest/potStd
+forcesTestRscl =  forcesTest- forcesMean
+forcesTestRscl = forcesTestRscl/forcesStd
 
-potPred, forcePred = model(pointsTest)
-err = tf.sqrt(tf.reduce_sum(tf.square(potPred - potentialTestRscl)))/tf.sqrt(tf.reduce_sum(tf.square(potPred)))
-print("Relative Error in the potential is " + str(err.numpy()))
+forcePred = model(pointsTest)
 
 err = tf.sqrt(tf.reduce_sum(tf.square(forcePred - forcesTestRscl)))/tf.sqrt(tf.reduce_sum(tf.square(forcePred)))
 print("Relative Error in the forces is " +str(err.numpy()))
+
 
 # # # ################# Testing each step inside the model#####
 # with tf.GradientTape() as tape:
