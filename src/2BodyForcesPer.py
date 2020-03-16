@@ -13,7 +13,7 @@ import sys
 import json
 
 from data_gen_1d import genDataYukawaPer
-from utilities import genDistInv, train_step_2
+from utilities import genDistInvPer, train_step_2
 from utilities import MyDenseLayer, pyramidLayer, pyramidLayerNoBias
 
 nameScript = sys.argv[0].split('/')[-1]
@@ -122,7 +122,7 @@ Rinput = tf.Variable(pointsArray, name="input", dtype = tf.float32)
 
 #compute the statistics of the inputs in order to rescale 
 #the descriptor computation 
-genCoordinates = genDistInv(Rinput, Ncells, Np)
+genCoordinates = genDistInvPer(Rinput, Ncells, Np)
 
 
 if loadFile: 
@@ -185,7 +185,7 @@ class DeepMDsimpleEnergy(tf.keras.Model):
       tape.watch(inputs)
       # (Nsamples, Ncells*Np)
       # in this case we are only considering the distances
-      genCoordinates = genDistInv(inputs, self.Ncells, self.Np, 
+      genCoordinates = genDistInvPer(inputs, self.Ncells, self.Np, 
                                   self.av, self.std)
       # (Nsamples*Ncells*Np*(3*Np - 1), 2)
       L1   = self.layerPyramid(genCoordinates[:,1:])*genCoordinates[:,1:]
@@ -328,7 +328,7 @@ print("Relative Error in the forces is " +str(err.numpy()))
 #   tape.watch(Rinput)
 #   # (Nsamples, Ncells*Np)
 #   # in this case we are only considering the distances
-#   genCoordinates = genDistInv(Rinput, model.Ncells, model.Np)
+#   genCoordinates = genDistInvPer(Rinput, model.Ncells, model.Np)
 #   # (Nsamples*Ncells*Np*(3*Np - 1), 2)
 #   L1   = model.layerPyramid(genCoordinates[:,1:])*genCoordinates[:,1:]
 #   # (Nsamples*Ncells*Np*(3*Np - 1), descriptorDim)

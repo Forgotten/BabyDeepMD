@@ -107,6 +107,55 @@ def genDistInv(Rin, Ncells, Np, av = [0.0, 0.0], std = [1.0, 1.0]):
 
     return R_Diff_total
 
+@tf.function
+def genDistInvPer(Rin, Ncells, Np, av = [0.0, 0.0], std = [1.0, 1.0]):
+    # function to generate the generalized coordinates for periodic data
+    # the input has dimensions (Nsamples, Ncells*Np)
+    # the ouput has dimensions (Nsamples*Ncells*Np*(3*Np-1), 2)
+
+    # add assert with respect to the input shape 
+    Nsamples = Rin.shape[0]
+    R = tf.reshape(Rin, (Nsamples, Ncells, Np))
+
+    Abs_Array = []
+    Abs_Inv_Array = []
+    # we compute the difference between points in the same
+    # interaction list
+    for i in range(Ncells):
+        for j in range(Np):
+            absDistArray = []
+            absInvArray = []
+            for l in range(-1,2):
+                for k in range(Np):
+                    if j != k or l != 0:
+                        absDistArray.append((tf.abs(tf.expand_dims(
+                                                tf.subtract(R[:,(i+l)%Ncells,k], R[:,i,j]),-1))-av[1])/std[1] )
+                        absInvArray.append((tf.abs(tf.math.reciprocal(
+                                               tf.expand_dims(
+                                               tf.subtract(R[:,(i+l)%Ncells,k], R[:,i,j]),-1))) -av[0])/std[0])
+            Abs_Array.append(tf.expand_dims(
+                             tf.concat(absDistArray, axis = 1), 1))
+            Abs_Inv_Array.append(tf.expand_dims(
+                                tf.concat(absInvArray, axis = 1), 1))
+
+    # concatenating the lists of tensors to a large tensor
+    absDistList = tf.concat(Abs_Array, axis = 1)
+    absInvList = tf.concat(Abs_Inv_Array, axis = 1)
+
+
+    # R_Diff_abs = absDistList)-
+    # R_Diff_inv = (tf.abs(absInvList)-av[0])/std[0]
+    # or using the reciprocal 
+    #R_Diff_abs = tf.math.reciprocal(tf.abs(absDistList) + 0.00001)
+
+    R_Diff_total = tf.concat([tf.reshape(absInvList, (-1,1)), 
+                              tf.reshape(absDistList, (-1,1))], axis = 1)
+
+    # asserting the final size of the tensor
+    assert R_Diff_total.shape[0] == Nsamples*Ncells*Np*(3*Np-1)
+
+    return R_Diff_total
+
 
 
 @tf.function
