@@ -310,7 +310,7 @@ for cycle, (epochs, batchSizeL) in enumerate(zip(Nepochs, batchSizeArray)):
 ##### testing ######
 pointsTest, \
 potentialTest, \
-forcesTest  = genDataYukawa(Ncells, Np, mu, 1000, minDelta, Lcell)
+forcesTest  = genDataYukawaPer(Ncells, Np, mu, 1000, minDelta, Lcell)
 
 forcesTestRscl =  forcesTest- forcesMean
 forcesTestRscl = forcesTestRscl/forcesStd
