@@ -140,3 +140,86 @@ def genDataYukawa(Ncells, Np, sigma, Nsamples, minDelta = 0.0, Lcell = 0.0):
 
 	return pointsArray, potentialArray, forcesArray
 
+
+def genDataYukawaPer(Ncells, Np, sigma, Nsamples, minDelta = 0.0, Lcell = 0.0): 
+
+	pointsArray = np.zeros((Nsamples, Np*Ncells))
+	potentialArray = np.zeros((Nsamples,1))
+	forcesArray = np.zeros((Nsamples, Np*Ncells))
+
+	if Lcell == 0.0 :
+		sizeCell = 1/Ncells
+	else :
+		sizeCell = Lcell
+
+	NpointsPerCell = 1000
+	Nx = Ncells*NpointsPerCell + 1
+	Ls = Ncells*sizeCell
+
+	xGrid, pot, dpotdx = computeDerPotPer(Nx, sigma, Ls)
+
+	idxCell = np.linspace(0,NpointsPerCell-1, NpointsPerCell).astype(int)
+	idxStart = np.array([ii*NpointsPerCell for ii in range(Ncells)]).reshape(-1,1)
+	
+	for i in range(Nsamples):
+
+		idxPointCell = idxStart + np.random.choice(idxCell, [Ncells, Np  ])
+		idxPointCell = np.sort(idxPointCell.reshape((-1,1)), axis = 0)
+		points = xGrid[idxPointCell]
+		
+
+		# we want to check that the points are not too close 
+		while np.min(points[1:] - points[0:-1]) < minDelta:
+			idxPointCell = idxStart + np.random.choice(idxCell, [Ncells, Np  ])
+			idxPointCell = np.sort(idxPointCell.reshape((-1,1)), axis = 0)
+			points = xGrid[idxPointCell]
+
+		pointsArray[i, :] = points.T
+
+		R = pot[idxPointCell - idxPointCell.T]
+
+		RR = np.triu(R, 1)
+		potTotal = np.sum(RR)
+
+		potentialArray[i,:] = potTotal
+
+		F = dpotdx[idxPointCell - idxPointCell.T]
+		F = np.triu(F,1) + np.tril(F,-1)
+
+		Forces = -np.sum(F, axis = 1) 
+
+		forcesArray[i,:] = Forces.T
+
+	return pointsArray, potentialArray, forcesArray
+
+
+def gaussian(x, xCenter, tau):
+	return (1/np.sqrt(2*np.pi/tau))*\
+		   np.exp( -0.5*np.square(x - xCenter)/tau**2 )
+
+def computeDerPotPer(Nx, mu, Ls, xCenter = 0, nPointSmear = 10):
+	
+	xGrid = np.linspace(0, Ls, Nx+1)[:-1] 
+	kGrid = 2*np.pi*np.linspace(-(Nx//2), Nx//2, Nx)/Ls      
+
+	filterM = 1#0.5 - 0.5*np.tanh(np.abs(3*kGrid/np.sqrt(Nx)) - np.sqrt(Nx)) 
+	mult = 4*np.pi*filterM/(np.square(kGrid) + np.square(mu))
+
+	# here we smear the dirac delta
+	# we use the width of the smearing for 
+	tau = nPointSmear*Ls/Nx
+
+	x = gaussian(xGrid, xCenter, tau) + \
+		gaussian(xGrid - Ls, xCenter, tau) +\
+		gaussian(xGrid + Ls, xCenter, tau) 
+
+	xFFT = np.fft.fftshift(np.fft.fft(x))
+	
+	yFFT = xFFT*mult
+	
+	y = np.real(np.fft.ifft(np.fft.ifftshift(yFFT)))
+
+	dydxFFT = 1.j*kGrid*yFFT
+	dydx = np.fft.ifft(np.fft.ifftshift(dydxFFT))
+
+	return xGrid, y, np.real(dydx)
