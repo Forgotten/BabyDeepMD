@@ -166,13 +166,16 @@ def genDataYukawaPer(Ncells, Np, sigma, Nsamples, minDelta = 0.0, Lcell = 0.0):
 		idxPointCell = idxStart + np.random.choice(idxCell, [Ncells, Np  ])
 		idxPointCell = np.sort(idxPointCell.reshape((-1,1)), axis = 0)
 		points = xGrid[idxPointCell]
+		# this is to keep the periodicity
+		pointsExt = np.concatenate([points - Ls, points, points + Ls])
 		
 
 		# we want to check that the points are not too close 
-		while np.min(points[1:] - points[0:-1]) < minDelta:
+		while np.min(pointsExt[1:] - pointsExt[0:-1]) < minDelta:
 			idxPointCell = idxStart + np.random.choice(idxCell, [Ncells, Np  ])
 			idxPointCell = np.sort(idxPointCell.reshape((-1,1)), axis = 0)
 			points = xGrid[idxPointCell]
+			pointsExt = np.concatenate([points - Ls, points, points + Ls])
 
 		pointsArray[i, :] = points.T
 

@@ -16,6 +16,10 @@ from data_gen_1d import genDataYukawaPer
 from utilities import genDistInvPer, train_step_2
 from utilities import MyDenseLayer, pyramidLayer, pyramidLayerNoBias
 
+import os
+
+os.environ['KMP_DUPLICATE_LIB_OK']='True'
+
 nameScript = sys.argv[0].split('/')[-1]
 
 # we are going to give all the arguments using a Json file
@@ -73,6 +77,7 @@ checkFile = checkFolder + "checkpoint_" + nameScript + \
 print("Using data in %s"%(dataFile))
 
 # TODO: add the path file for this one
+assert potentialType == "Periodic"
 
 # if the file doesn't exist we create it
 if not path.exists(dataFile):
@@ -315,7 +320,7 @@ forcesTest  = genDataYukawaPer(Ncells, Np, mu, 1000, minDelta, Lcell)
 forcesTestRscl =  forcesTest- forcesMean
 forcesTestRscl = forcesTestRscl/forcesStd
 
-forcePred = model(pointsTest)
+potPred, forcePred = model(pointsTest)
 
 err = tf.sqrt(tf.reduce_sum(tf.square(forcePred - forcesTestRscl)))/tf.sqrt(tf.reduce_sum(tf.square(forcePred)))
 print("Relative Error in the forces is " +str(err.numpy()))

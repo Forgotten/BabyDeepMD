@@ -13,7 +13,7 @@ import sys
 import json
 
 from data_gen_1d import genDataYukawaPer
-from utilities import genDistInv, train_step, genDistInvLongRange
+from utilities import genDistInvPer, train_step, genDistInvPerLongRange
 from utilities import genDistLongRangeFull
 from utilities import MyDenseLayer, pyramidLayer
 from utilities import pyramidLayerNoBias, NUFFTLayerMultiChannelInit
@@ -88,6 +88,8 @@ checkFile = checkFolder + "checkpoint_" + nameScript + \
 
 print("Using data in %s"%(dataFile))
 
+# TODO: add the path file for this one
+
 # if the file doesn't exist we create it
 if not path.exists(dataFile):
   # TODO: encapsulate all this in a function
@@ -135,7 +137,7 @@ Rinput = tf.Variable(pointsArray, name="input", dtype = tf.float32)
 
 #compute the statistics of the inputs in order to rescale 
 #the descriptor computation 
-genCoordinates = genDistInv(Rinput[0:1000,:], Ncells, Np)
+genCoordinates = genDistInvPer(Rinput[0:1000,:], Ncells, Np)
 
 # we need to compute the normalization coefficients
 ExtCoords = genDistLongRangeFull(Rinput[0:1000,:], Ncells, Np, 
@@ -246,7 +248,7 @@ class DeepMDsimpleForces(tf.keras.Model):
       tape.watch(inputs)
       # (Nsamples, Ncells*Np)
       # in this case we are only considering the distances
-      genCoordinates = genDistInv(inputs, self.Ncells, self.Np, 
+      genCoordinates = genDistInvPer(inputs, self.Ncells, self.Np, 
                                   self.av, self.std)
 
       # (Nsamples*Ncells*Np*(3*Np - 1), 2)
@@ -390,7 +392,7 @@ for cycle, (epochs, batchSizeL) in enumerate(zip(Nepochs, batchSizeArray)):
 ##### testing ######
 pointsTest, \
 potentialTest, \
-forcesTest  = genDataYukawa(Ncells, Np, mu, 1000, minDelta, Lcell)
+forcesTest  = genDataYukawaPer(Ncells, Np, mu, 1000, minDelta, Lcell)
 
 forcesTestRscl =  forcesTest- forcesMean
 forcesTestRscl = forcesTestRscl/forcesStd
@@ -406,7 +408,7 @@ print("Relative Error in the forces is " +str(err.numpy()))
 #   tape.watch(Rinput)
 #   # (Nsamples, Ncells*Np)
 #   # in this case we are only considering the distances
-#   genCoordinates = genDistInv(Rinput, model.Ncells, model.Np, 
+#   genCoordinates = genDistInvPer(Rinput, model.Ncells, model.Np, 
 #                               model.av, model.std)
 #   # (Nsamples*Ncells*Np*(3*Np - 1), 2)
 #   L1   = model.layerPyramid(genCoordinates[:,1:])*genCoordinates[:,1:]
