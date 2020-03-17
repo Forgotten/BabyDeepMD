@@ -122,12 +122,14 @@ forcesArray -= forcesMean
 forcesArray /= forcesStd
 
 
+
 # positions of the 
 Rinput = tf.Variable(pointsArray, name="input", dtype = tf.float32)
 
 #compute the statistics of the inputs in order to rescale 
 #the descriptor computation 
-genCoordinates = genDistInvPer(Rinput, Ncells, Np)
+L = Lcell*Ncells
+genCoordinates = genDistInvPer(Rinput, Ncells, Np, L)
 
 
 if loadFile: 
@@ -190,8 +192,8 @@ class DeepMDsimpleEnergy(tf.keras.Model):
       tape.watch(inputs)
       # (Nsamples, Ncells*Np)
       # in this case we are only considering the distances
-      genCoordinates = genDistInvPer(inputs, self.Ncells, self.Np, 
-                                  self.av, self.std)
+      genCoordinates = genDistInvPer(inputs, self.Ncells, self.Np, L, 
+                                  self.av, self.std) # this need to be fixed
       # (Nsamples*Ncells*Np*(3*Np - 1), 2)
       L1   = self.layerPyramid(genCoordinates[:,1:])*genCoordinates[:,1:]
       # (Nsamples*Ncells*Np*(3*Np - 1), descriptorDim)

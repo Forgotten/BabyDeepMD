@@ -137,7 +137,8 @@ Rinput = tf.Variable(pointsArray, name="input", dtype = tf.float32)
 
 #compute the statistics of the inputs in order to rescale 
 #the descriptor computation 
-genCoordinates = genDistInvPer(Rinput[0:1000,:], Ncells, Np)
+L = Lcell*Ncells
+genCoordinates = genDistInvPer(Rinput[0:1000,:], Ncells, Np, L)
 
 if loadFile: 
   # if we are loadin a file we need to be sure that we are 
@@ -185,6 +186,7 @@ class DeepMDsimpleForces(tf.keras.Model):
     self.av = av
     self.std = std
     self.mu = mu
+    self.L = np.abs(xLims[1]-xLims[0])
     self.descripDim = descripDim
     self.fittingDim = fittingDim
     self.descriptorDim = descripDim[-1]
@@ -219,7 +221,7 @@ class DeepMDsimpleForces(tf.keras.Model):
       tape.watch(inputs)
       # (Nsamples, Ncells*Np)
       # in this case we are only considering the distances
-      genCoordinates = genDistInvPer(inputs, self.Ncells, self.Np, 
+      genCoordinates = genDistInvPer(inputs, self.Ncells, self.Np,  self.L,
                                   self.av, self.std)
 
       # (Nsamples*Ncells*Np*(3*Np - 1), 2)
