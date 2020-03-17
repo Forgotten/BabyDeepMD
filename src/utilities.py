@@ -1025,17 +1025,24 @@ class NUFFTLayerMultiChannelInit(tf.keras.layers.Layer):
     super(NUFFTLayerMultiChannelInit, self).__init__()
     self.nChannels = nChannels
     self.NpointsMesh = NpointsMesh 
-    self.mu0 = mu0
-    assert NpointsMesh % 2 == 1
-    self.tau = tau  # the size of the mollifications
-    self.xLims = xLims
+    self.mu0 = tf.constant(mu0, dtype=tf.float32)
+
     # we need the number of points to be odd 
-    self.kGrid = tf.constant(np.linspace(-(NpointsMesh//2), NpointsMesh//2, NpointsMesh), 
-                dtype = tf.float32)
+    assert NpointsMesh % 2 == 1
+
+    
+    self.xLims = xLims
     self.L = np.abs(xLims[1] - xLims[0])
-    # we need to define a mesh betwen 0 and 2pi
-    self.xGrid = 2*np.pi*tf.constant(np.linspace(xLims[0], xLims[1], NpointsMesh+1)[:-1], 
-                dtype = tf.float32)/(self.L)
+    self.tau = tf.constant(12*(self.L/(2*np.pi*NpointsMesh))**2, dtype = tf.float32)# the size of the mollifications
+    self.kGrid = tf.constant((2*np.pi/self.L)*np.linspace(-(NpointsMesh//2), 
+                                                            NpointsMesh//2, 
+                                                            NpointsMesh), 
+                              dtype = tf.float32)
+    # we need to define a mesh betwen xLims[0] and xLims[1]
+    self.xGrid =  tf.constant(np.linspace(xLims[0], 
+                                          xLims[1], 
+                                          NpointsMesh+1)[:-1], 
+                              dtype = tf.float32)
 
 
   def build(self, input_shape):
@@ -1043,10 +1050,9 @@ class NUFFTLayerMultiChannelInit(tf.keras.layers.Layer):
     print("building the channels")
     # we initialize the channel multipliers
     # we need to add a parametrized family in here
-    mu0 = tf.constant(self.mu0, dtype=tf.float32)
 
     xExp = tf.expand_dims(4*np.pi*tf.math.reciprocal(tf.square(self.kGrid) + \
-                                  tf.square(mu0)), 0)
+                                  tf.square(self.mu0)), 0)
 
     initKExp = tf.keras.initializers.Constant(xExp.numpy())
 
@@ -1078,22 +1084,22 @@ class NUFFTLayerMultiChannelInit(tf.keras.layers.Layer):
     # we need to add an iterpolation step
     # this needs to be perodic distance!!!
     # (batch_size, Np*Ncells)
-    diff = tf.expand_dims(input*2*np.pi/self.L, -1) - tf.reshape(self.xGrid, (1,1, self.NpointsMesh))
+    diff = tf.expand_dims(input, -1) - tf.reshape(self.xGrid, (1,1, self.NpointsMesh))
     # (batch_size, Np*Ncells, NpointsMesh)
     # we compute all the localized gaussians
-    array_gaussian = gaussian(diff, self.tau)
+    array_gaussian = gaussianPer(diff, self.tau)
     # we add them together
     arrayReducGaussian = tf.complex(tf.reduce_sum(array_gaussian, axis = 1), 0.0)
     # (batch_size, NpointsMesh) (we sum the gaussians together)
     # we apply the fft
     print("computing the FFT")
 
-    fftGauss = tf.signal.fftshift(tf.signal.fft(arrayReducGaussian))*self.L/(2*np.pi)
+    fftGauss = tf.signal.fftshift(tf.signal.fft(arrayReducGaussian))
     #(batch_size, NpointsMesh)
     Deconv = tf.complex(tf.expand_dims(gaussianDeconv(self.kGrid, self.tau), 0),0.0)
     #(1, NpointsMesh)
 
-    rfft = tf.multiply(fftGauss, Deconv)
+    rfft = tf.multiply(fftGauss, Deconv)/(2*np.pi*self.NpointsMesh/self.L)
     #(batch_size, NpointsMesh)
     # we are only using one channel
     #rfft = tf.expand_dims(rfftDeconv, 1)
@@ -1133,7 +1139,7 @@ class NUFFTLayerMultiChannelInit(tf.keras.layers.Layer):
 
     local = irfft*tf.expand_dims(array_gaussian, 2)
     
-    fmm = tf.reduce_sum(local, axis = -1)/self.NpointsMesh
+    fmm = tf.reduce_sum(local, axis = -1)/(2*np.pi*self.NpointsMesh/self.L)
     #mult = 
 
     return fmm 

@@ -60,7 +60,7 @@ potentialType = data["potentialType"]
 assert potentialType == "Periodic"
 # we will save them for now
 # we need to extract them from the kson file
-NpointsFourier = 501
+NpointsFourier = 1001
 fftChannels = 2
 sigmaFFT = 0.0001
 xLims = [0.0, 10.0]
@@ -139,9 +139,6 @@ Rinput = tf.Variable(pointsArray, name="input", dtype = tf.float32)
 #the descriptor computation 
 genCoordinates = genDistInvPer(Rinput[0:1000,:], Ncells, Np)
 
-print("long range std")
-print(stdLongRange)
-
 if loadFile: 
   # if we are loadin a file we need to be sure that we are 
   # loding the correct mean and std for the inputs
@@ -171,8 +168,6 @@ class DeepMDsimpleForces(tf.keras.Model):
                mu = 2.0, 
                av = [0.0, 0.0],
                std = [1.0, 1.0],
-               meanLongRange = [0.0 ,0.0, 0.0, 0.0],
-               stdLongRange = [1.0 , 1.0, 1.0, 1.0],
                NpointsFourier = 500, 
                fftChannels = 4,
                sigmaFFT = 0.1, 
@@ -197,8 +192,6 @@ class DeepMDsimpleForces(tf.keras.Model):
     self.NpointsFourier = NpointsFourier
     self.fftChannels    = fftChannels 
     self.sigmaFFT = sigmaFFT
-    self.meanLongRange = meanLongRange
-    self.stdLongRange = stdLongRange
     # we may need to use the tanh here
     self.layerPyramid   = pyramidLayer(descripDim, 
                                        actfn = tf.nn.tanh)
@@ -237,9 +230,10 @@ class DeepMDsimpleForces(tf.keras.Model):
 
       # we compute the FMM and the normalize by the number of particules
       # here we are harcoding the normalization
-      longRangewCoord = (self.NUFFTLayerMultiChannelInit(inputs) - np.reshape(np.array([404.24948, 104.75703]), (1,1,2)))/\
-                        np.reshape(np.array([11.805559, 11.997403]), (1,1,2))
-      # (Nsamples, Ncells*Np, 1) # we are only using 4 kernels
+      # longRangewCoord = (self.NUFFTLayerMultiChannelInit(inputs) - np.reshape(np.array([404.24948, 104.75703]), (1,1,2)))/\
+      #                   np.reshape(np.array([11.805559, 11.997403]), (1,1,2))
+      longRangewCoord = self.NUFFTLayerMultiChannelInit(inputs) 
+      # # (Nsamples, Ncells*Np, 1) # we are only using 4 kernels
       # we normalize the output of the fmm layer before feeding them to network
       longRangewCoord2 = tf.reshape(longRangewCoord, (-1, self.fftChannels))
       # (Nsamples*Ncells*Np, 1)
@@ -272,7 +266,7 @@ class DeepMDsimpleForces(tf.keras.Model):
 ## Defining the model
 model = DeepMDsimpleForces(Np, Ncells, 
                            filterNet, fittingNet, mu,
-                            av, std, meanLongRange, stdLongRange, 
+                            av, std, 
                             NpointsFourier, fftChannels, sigmaFFT, xLims)
 
 # quick run of the model to check that it is correct.
