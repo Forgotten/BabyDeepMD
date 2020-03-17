@@ -139,28 +139,6 @@ Rinput = tf.Variable(pointsArray, name="input", dtype = tf.float32)
 #the descriptor computation 
 genCoordinates = genDistInvPer(Rinput[0:1000,:], Ncells, Np)
 
-# we need to compute the normalization coefficients
-ExtCoords = genDistLongRangeFull(Rinput[0:1000,:], Ncells, Np, 
-                                      [0.0, 0.0], [1.0, 1.0]) # this are hard coded
-
-KernelGen0 = tf.reshape(tf.reduce_sum(tf.math.reciprocal(ExtCoords), axis = 2), (-1, 1))
-KernelGen1 = tf.reshape(tf.reduce_sum(tf.sqrt(tf.math.reciprocal(ExtCoords)), axis = 2), (-1, 1))
-KernelGen2 = tf.reshape(tf.reduce_sum(tf.square(tf.math.reciprocal(ExtCoords)), axis = 2), (-1, 1))
-KernelGen3 = tf.reshape(tf.reduce_sum(tf.math.exp(-mu*ExtCoords), axis = 2), (-1, 1))
-
-mean0, std0 =  tf.math.reduce_std(KernelGen0), tf.math.reduce_mean(KernelGen0)
-mean1, std1 =  tf.math.reduce_std(KernelGen1), tf.math.reduce_mean(KernelGen1)
-mean2, std2 =  tf.math.reduce_std(KernelGen2), tf.math.reduce_mean(KernelGen2)
-mean3, std3 =  tf.math.reduce_std(KernelGen3), tf.math.reduce_mean(KernelGen3)
-
-meanLongRange = np.array([mean0.numpy(), mean1.numpy(), mean2.numpy(), mean3.numpy()])
-stdLongRange = np.array([std0.numpy(), std1.numpy(), std2.numpy(), std3.numpy()])
-
-meanLongRange = meanLongRange.reshape((1,4))
-stdLongRange = stdLongRange.reshape((1,4))
-print("long range meand")
-print(meanLongRange)
-
 print("long range std")
 print(stdLongRange)
 
@@ -302,17 +280,17 @@ model = DeepMDsimpleForces(Np, Ncells,
 F = model(Rinput[0:10,:])
 model.summary()
 
-# # Create checkpointing directory if necessary
-# if not os.path.exists(checkFolder):
-#     os.mkdir(checkFolder)
-#     print("Directory " , checkFolder ,  " Created ")
-# else:    
-#     print("Directory " , checkFolder ,  " already exists :)")
+# Create checkpointing directory if necessary
+if not os.path.exists(checkFolder):
+    os.mkdir(checkFolder)
+    print("Directory " , checkFolder ,  " Created ")
+else:    
+    print("Directory " , checkFolder ,  " already exists :)")
 
-# ## in the case we need to load an older saved model
-# if loadFile: 
-#   print("Loading the weights the model contained in %s"%(loadFile), flush = True)
-#   model.load_weights(loadFile)
+## in the case we need to load an older saved model
+if loadFile: 
+  print("Loading the weights the model contained in %s"%(loadFile), flush = True)
+  model.load_weights(loadFile)
 
 ## We use a decent training or a custom one if necessary
 if type(Nepochs) is not list:
@@ -350,7 +328,6 @@ for cycle, (epochs, batchSizeL) in enumerate(zip(Nepochs, batchSizeArray)):
   print('Batch size in this cycle: %d'%(batchSizeL,))
 
 # we need to modify this one later
-  weightE = 0.0
   weightF = 1.0
 
   x_train = (pointsArray, forcesArray)
@@ -369,7 +346,8 @@ for cycle, (epochs, batchSizeL) in enumerate(zip(Nepochs, batchSizeArray)):
     for step, x_batch_train in enumerate(train_dataset):
       loss = train_step(model, optimizer, mse_loss_fn,
                         x_batch_train[0], 
-                        x_batch_train[1], weightF)
+                        x_batch_train[1], 
+                        weightF)
       loss_metric(loss)
   
       if step % 100 == 0:
