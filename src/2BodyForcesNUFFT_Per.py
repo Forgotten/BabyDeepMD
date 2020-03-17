@@ -13,7 +13,7 @@ import sys
 import json
 
 from data_gen_1d import genDataYukawaPer
-from utilities import genDistInvPer, train_step, genDistInvPerLongRange
+from utilities import genDistInvPer, train_step
 from utilities import genDistLongRangeFull
 from utilities import MyDenseLayer, pyramidLayer
 from utilities import pyramidLayerNoBias, NUFFTLayerMultiChannelInit
