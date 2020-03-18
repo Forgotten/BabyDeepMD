@@ -130,9 +130,9 @@ def genDistInvPer(Rin, Ncells, Np, L, av = [0.0, 0.0], std = [1.0, 1.0]):
                     if j != k or l != 0:
                         a = tf.subtract(R[:,(i+l)%Ncells,k], R[:,i,j])
                         b = a - L*tf.round(a/L)
-                        absDistArray.append((tf.abs(tf.expand_dims(a,-1)) -av[1])/std[1] )
+                        absDistArray.append((tf.abs(tf.expand_dims(b,-1)) -av[1])/std[1] )
                         absInvArray.append((tf.abs(tf.math.reciprocal(
-                                               tf.expand_dims(a,-1))) -av[0])/std[0])
+                                               tf.expand_dims(b,-1))) -av[0])/std[0])
             Abs_Array.append(tf.expand_dims(
                              tf.concat(absDistArray, axis = 1), 1))
             Abs_Inv_Array.append(tf.expand_dims(
