@@ -140,6 +140,10 @@ Rinput = tf.Variable(pointsArray, name="input", dtype = tf.float32)
 L = Lcell*Ncells
 genCoordinates = genDistInvPer(Rinput[0:1000,:], Ncells, Np, L)
 
+## TODO: add a testing for the FFT part, we want to be sure 
+# that we are having the proper normalization 
+
+
 if loadFile: 
   # if we are loadin a file we need to be sure that we are 
   # loding the correct mean and std for the inputs
@@ -234,7 +238,9 @@ class DeepMDsimpleForces(tf.keras.Model):
       # here we are harcoding the normalization
       # longRangewCoord = (self.NUFFTLayerMultiChannelInit(inputs) - np.reshape(np.array([404.24948, 104.75703]), (1,1,2)))/\
       #                   np.reshape(np.array([11.805559, 11.997403]), (1,1,2))
-      longRangewCoord = self.NUFFTLayerMultiChannelInit(inputs) 
+      longRangewCoord = (self.NUFFTLayerMultiChannelInit(inputs) - \
+                         np.array([0.8064807, 0.03904729]).reshape(1,1,2))/\
+                         np.array([0.26986924, 0.01608576]).reshape(1,1,2)
       # # (Nsamples, Ncells*Np, 1) # we are only using 4 kernels
       # we normalize the output of the fmm layer before feeding them to network
       longRangewCoord2 = tf.reshape(longRangewCoord, (-1, self.fftChannels))
