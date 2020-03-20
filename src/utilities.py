@@ -935,7 +935,7 @@ class NUFFTLayer(tf.keras.layers.Layer):
   # and we add the exact mu to check if that becomes worse
   def __init__(self, nChannels, NpointsMesh, tau, xLims):
     super(NUFFTLayer, self).__init__()
-        self.nChannels = nChannels
+    self.nChannels = nChannels
     self.NpointsMesh = NpointsMesh 
     self.mu0 = tf.constant(mu0, dtype=tf.float32)
 
