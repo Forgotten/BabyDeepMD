@@ -1316,20 +1316,26 @@ class RNUFFTLayerMultiChannelInit(tf.keras.layers.Layer):
     # we need the number of points to be odd 
     assert NpointsMesh % 2 == 1
 
-    
+    # saving the limits of the domains
     self.xLims = xLims
+    # computing the length of the domains
     self.L = np.abs(xLims[1] - xLims[0])
-    self.tau = tf.constant(12*(self.L/(2*np.pi*NpointsMesh))**2, dtype = tf.float32)# the size of the mollifications
-    self.kGrid = tf.constant((2*np.pi/self.L)*np.linspace(-(NpointsMesh//2), 
-                                                            NpointsMesh//2, 
-                                                            NpointsMesh), 
+
+    ## TODO: make this optional
+    # computing the smearing factor for the NUFFT
+    self.tau = tf.constant(12*(self.L/(2*np.pi*NpointsMesh))**2, 
+                           dtype = tf.float32)# the size of the mollifications
+    # defining the Fourier grid
+    self.kGrid = tf.constant((2*np.pi/self.L)*\
+                              np.linspace(-(NpointsMesh//2), 
+                              NpointsMesh//2, 
+                              NpointsMesh), 
                               dtype = tf.float32)
-    # we need to define a mesh betwen xLims[0] and xLims[1]
+    # defining the mesh betwen xLims[0] and xLims[1]
     self.xGrid =  tf.constant(np.linspace(xLims[0], 
                                           xLims[1], 
                                           NpointsMesh+1)[:-1], 
                               dtype = tf.float32)
-
 
   def build(self, input_shape):
 
@@ -1337,11 +1343,13 @@ class RNUFFTLayerMultiChannelInit(tf.keras.layers.Layer):
     # we initialize the channel multipliers
     # we need to add a parametrized family in here
 
+    # 4*pi/(k^2 + mu_0^2)
     xExp = tf.expand_dims(4*np.pi*tf.math.reciprocal(tf.square(self.kGrid) + \
                                   tf.square(self.mu0)), 0)
 
     initKExp = tf.keras.initializers.Constant(xExp.numpy())
 
+    # 4*pi/(k^2 +1) TODO: we may want to add the derivative
     xExp2 = tf.expand_dims(4*np.pi*tf.math.reciprocal(tf.square(self.kGrid) + \
                                   tf.square(1.0)), 0)
 
@@ -1350,6 +1358,7 @@ class RNUFFTLayerMultiChannelInit(tf.keras.layers.Layer):
     self.multipliersRe = []
     self.multipliersIm = []
 
+    # defining the multipliers 
     self.multipliersRe.append(self.add_weight("multRe_0",
                        initializer=initKExp, shape = (1, self.NpointsMesh)))
     self.multipliersIm.append(self.add_weight("multIm_0",
@@ -1370,22 +1379,27 @@ class RNUFFTLayerMultiChannelInit(tf.keras.layers.Layer):
     # we need to add an iterpolation step
     # this needs to be perodic distance!!!
     # (batch_size, Np*Ncells)
-    diff = tf.expand_dims(input, -1) - tf.reshape(self.xGrid, (1,1, self.NpointsMesh))
+    diff = tf.expand_dims(input, -1) - \
+           tf.reshape(self.xGrid, 
+                      (1,1, self.NpointsMesh))
     # (batch_size, Np*Ncells, NpointsMesh)
     # we compute all the localized gaussians
     array_gaussian = gaussianPer(diff, self.tau, self.L)
     # we add them together
-    arrayReducGaussian = tf.complex(tf.reduce_sum(array_gaussian, axis = 1), 0.0)
+    arrayReducGaussian = tf.complex(tf.reduce_sum(array_gaussian, 
+                                                  axis = 1), 0.0)
     # (batch_size, NpointsMesh) (we sum the gaussians together)
     # we apply the fft
     print("computing the FFT")
 
     fftGauss = tf.signal.fftshift(tf.signal.fft(arrayReducGaussian))
     #(batch_size, NpointsMesh)
-    Deconv = tf.complex(tf.expand_dims(gaussianDeconv(self.kGrid, self.tau), 0),0.0)
+    Deconv = tf.complex(tf.expand_dims(gaussianDeconv(self.kGrid, 
+                                                      self.tau), 0),0.0)
     #(1, NpointsMesh)
 
-    rfft = tf.multiply(fftGauss, Deconv)/(2*np.pi*self.NpointsMesh/self.L)
+    rfft = tf.multiply(fftGauss, Deconv)/\
+           (2*np.pi*self.NpointsMesh/self.L)
     #(batch_size, NpointsMesh)
     # we are only using one channel
     #rfft = tf.expand_dims(rfftDeconv, 1)
@@ -1399,8 +1413,8 @@ class RNUFFTLayerMultiChannelInit(tf.keras.layers.Layer):
     # multfft = tf.multiply(self.multChannels*rfft)
     multReRefft = tf.multiply(self.multipliersRe[0],Rerfft)
     multReImfft = tf.multiply(self.multipliersIm[0],Rerfft)
-    multImImfft = tf.multiply(self.multipliersRe[0],Imrfft)
-    multImRefft = tf.multiply(self.multipliersIm[0],Imrfft)
+    multImRefft = tf.multiply(self.multipliersRe[0],Imrfft)
+    multImImfft = tf.multiply(self.multipliersIm[0],Imrfft)
 
     multfft = tf.expand_dims(tf.complex(multReRefft-multImImfft, \
                                         multReImfft+multImRefft),1)
@@ -1408,11 +1422,12 @@ class RNUFFTLayerMultiChannelInit(tf.keras.layers.Layer):
     # multfft = tf.multiply(self.multChannels*rfft)
     multReRefft2 = tf.multiply(self.multipliersRe[1],Rerfft)
     multReImfft2 = tf.multiply(self.multipliersIm[1],Rerfft)
-    multImImfft2 = tf.multiply(self.multipliersRe[1],Imrfft)
-    multImRefft2 = tf.multiply(self.multipliersIm[1],Imrfft)
+    multImRefft2 = tf.multiply(self.multipliersRe[1],Imrfft)
+    multImImfft2 = tf.multiply(self.multipliersIm[1],Imrfft)
 
     multfft2 = tf.expand_dims(tf.complex(multReRefft2-multImImfft2, \
-                          multReImfft2+multImRefft2), 1)
+                                         multReImfft2+multImRefft2), 
+                              1)
 
     multFFT = tf.concat([multfft, multfft2], axis = 1)
 
@@ -1421,7 +1436,9 @@ class RNUFFTLayerMultiChannelInit(tf.keras.layers.Layer):
 
     print(multfft.shape)
     print("inverse fft")
-    irfft = tf.math.real(tf.expand_dims(tf.signal.ifft(tf.signal.ifftshift(multfftDeconv)), 1))
+    irfft = tf.math.real(tf.expand_dims(
+                         tf.signal.ifft(
+                         tf.signal.ifftshift(multfftDeconv)), 1))
 
     local = irfft*tf.expand_dims(array_gaussian, 2)
     
@@ -1464,7 +1481,7 @@ class testInit(tf.keras.layers.Layer):
 
 # periodic spreading of the functions (not sure if this works all the time)
 @tf.function 
-def gaussianPer(x, tau, L=2*np.pi):
+def gaussianPer(x, tau, L = 2*np.pi):
   return tf.exp( -tf.square(x  )/(4*tau)) + \
          tf.exp( -tf.square(x-L)/(4*tau)) + \
          tf.exp( -tf.square(x+L)/(4*tau))
