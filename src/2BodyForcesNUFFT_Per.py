@@ -238,7 +238,9 @@ class DeepMDsimpleForces(tf.keras.Model):
       # longRangewCoord = (self.NUFFTLayerMultiChannelInit(inputs) - np.reshape(np.array([404.24948, 104.75703]), (1,1,2)))/\
       #                   np.reshape(np.array([11.805559, 11.997403]), (1,1,2))
       ## Normalization for mu = 5 (this should be different for different values)
-      longRangewCoord = self.NUFFTLayerMultiChannelInit(inputs)
+      longRangewCoord = self.NUFFTLayerMultiChannelInit(inputs) - \
+                         np.array([0.26040068, 0.01500177]).reshape((1,1,2)) \
+                         np.array([0.0147799 , 0.00377196]).reshape((1,1,2))
       # # (Nsamples, Ncells*Np, 1) # we are only using 4 kernels
       # we normalize the output of the fmm layer before feeding them to network
       longRangewCoord2 = tf.reshape(longRangewCoord, (-1, self.fftChannels))
