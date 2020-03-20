@@ -990,13 +990,13 @@ class NUFFTLayer(tf.keras.layers.Layer):
     # we need to add an iterpolation step
     # this needs to be perodic distance!!!
     # (batch_size, Np*Ncells)
-    diff = tf.expand_dims(input, -1) - 
+    diff = tf.expand_dims(input, -1) - \
            tf.reshape(self.xGrid, (1,1, self.NpointsMesh))
     # (batch_size, Np*Ncells, NpointsMesh)
     # we compute all the localized gaussians
     array_gaussian = gaussianPer(diff, self.tau, self.L)
     # we add them together
-    arrayReducGaussian = tf.complex(tf.reduce_sum(array_gaussian, 
+    arrayReducGaussian = tf.complex(tf.reduce_sum(array_gaussian, \
                                                   axis=1), 0.0)
     # (batch_size, NpointsMesh) (we sum the gaussians together)
     # we apply the fft
@@ -1006,8 +1006,8 @@ class NUFFTLayer(tf.keras.layers.Layer):
                tf.signal.fft(arrayReducGaussian))/\
                              (2*np.pi*self.NpointsMesh/self.L)
     #(batch_size, NpointsMesh)
-    Deconv = tf.complex(tf.expand_dims(gaussianDeconv(self.kGrid, 
-                                                      self.tau), 
+    Deconv = tf.complex(tf.expand_dims(gaussianDeconv(self.kGrid, \
+                                                      self.tau), \
                                        0),0.0)
     #(1, NpointsMesh)
 
@@ -1041,8 +1041,8 @@ class NUFFTLayer(tf.keras.layers.Layer):
 
     print(multfft.shape)
     print("inverse fft")
-    irfft = tf.math.real(tf.expand_dims(
-                         tf.signal.ifft(
+    irfft = tf.math.real(tf.expand_dims( \
+                         tf.signal.ifft( \
                          tf.signal.ifftshift(multfftDeconv)), 1))
 
     local = irfft*array_gaussian/(2*np.pi*self.NpointsMesh/self.L)
