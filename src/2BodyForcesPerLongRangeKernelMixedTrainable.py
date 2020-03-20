@@ -379,18 +379,16 @@ print( "values of the trainable decay %f" %(model.fmmLayerExpTrainablePer.mu.num
 ##### testing ######
 pointsTest, \
 potentialTest, \
-forcesTest  = gen_data(Ncells, Np, mu, 1000, minDelta, Lcell)
+forcesTest  = genDataYukawaPer(Ncells, Np, mu, 1000, minDelta, Lcell)
 
-potentialTestRscl = potentialTest - potMean
-potentialTestRscl /= potStd
-forcesTestRscl = forcesTest/potStd
+forcesTestRscl =  forcesTest- forcesMean
+forcesTestRscl = forcesTestRscl/forcesStd
 
 potPred, forcePred = model(pointsTest)
-err = tf.sqrt(tf.reduce_sum(tf.square(potPred - potentialTestRscl)))/tf.sqrt(tf.reduce_sum(tf.square(potPred)))
-print("Relative Error in the potential is " + str(err.numpy()))
 
 err = tf.sqrt(tf.reduce_sum(tf.square(forcePred - forcesTestRscl)))/tf.sqrt(tf.reduce_sum(tf.square(forcePred)))
 print("Relative Error in the forces is " +str(err.numpy()))
+
 
 # # # ################# Testing each step inside the model#####
 
