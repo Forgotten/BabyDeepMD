@@ -238,6 +238,7 @@ class DeepMDsimpleForces(tf.keras.Model):
       # here we are harcoding the normalization
       # longRangewCoord = (self.NUFFTLayerMultiChannelInit(inputs) - np.reshape(np.array([404.24948, 104.75703]), (1,1,2)))/\
       #                   np.reshape(np.array([11.805559, 11.997403]), (1,1,2))
+      ## Normalization for mu = 5 (this should be different for different values of mu)
       longRangewCoord = (self.NUFFTLayerMultiChannelInit(inputs) - \
                          np.array([0.8064807, 0.03904729]).reshape(1,1,2))/\
                          np.array([0.26986924, 0.01608576]).reshape(1,1,2)
