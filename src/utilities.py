@@ -1306,7 +1306,7 @@ class NUFFTLayerMultiChannelInitOneSided(tf.keras.layers.Layer):
   # this layers uses a few kernels to approximate exp(-mu)
   # and we add the exact mu to check if that becomes worse
   def __init__(self, nChannels, NpointsMesh, sigma, xLims, mu0 = 1.0):
-    super(NUFFTLayerMultiChannelInit, self).__init__()
+    super(NUFFTLayerMultiChannelInitOneSided, self).__init__()
     self.nChannels = nChannels
     self.NpointsMesh = NpointsMesh 
     self.mu0 = tf.constant(mu0, dtype=tf.float32)
@@ -1340,10 +1340,9 @@ class NUFFTLayerMultiChannelInitOneSided(tf.keras.layers.Layer):
     # we need to add a parametrized family in here
 
 
-    initSigma = tf.keras.initializers.Constant(self.sigma)
+    initSigma = tf.keras.initializers.Constant([self.sigma])
 
-    self.sigmaVar = self.add_weight("sigma",
-                       initializer=initSigma, shape = (1,))
+    
 
     xExp = tf.expand_dims(4*np.pi*tf.math.reciprocal(tf.square(self.kGrid) + \
                                   tf.square(self.mu0)), 0)
@@ -1354,6 +1353,9 @@ class NUFFTLayerMultiChannelInitOneSided(tf.keras.layers.Layer):
                                   tf.square(1.0)), 0)
 
     initKExp2 = tf.keras.initializers.Constant(xExp2.numpy())
+
+    self.sigmaVar = self.add_weight("sigma",
+                       initializer=initSigma, shape = (1,))
 
     self.multipliersRe = []
     self.multipliersIm = []
@@ -1382,12 +1384,13 @@ class NUFFTLayerMultiChannelInitOneSided(tf.keras.layers.Layer):
     # (batch_size, Np*Ncells, NpointsMesh)
     # we compute all the localized gaussians
     array_gaussian = gaussianPer(diff, self.tau, self.L)
-    array_normal   = normalPer(diff, self.sigma, self.L)
+    array_normal   = normalPer(diff, self.sigmaVar, self.L)
     # we add them together
     arrayReducGaussian = tf.complex(tf.reduce_sum(array_normal, axis = 1), 0.0)
     # (batch_size, NpointsMesh) (we sum the gaussians together)
     # we apply the fft
     print("computing the FFT")
+    print(self.sigmaVar.shape)
 
     # FFT of the sum of the FFT
     fftGauss = tf.signal.fftshift(tf.signal.fft(arrayReducGaussian))
