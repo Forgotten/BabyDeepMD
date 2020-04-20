@@ -157,7 +157,7 @@ Npoints = Np*Ncells
 
 
 genCoordinates = genDistInvPerNlist(Rin, Npoints, neighList, L)
-
+numNonZero =  tf.reduce_sum(tf.cast(genCoordinates>0, tf.int32), axis = 0).numpy()[0]
 
 if loadFile: 
   # if we are loadin a file we need to be sure that we are 
@@ -166,12 +166,12 @@ if loadFile:
   std = data["std"]
   print("loading the saved mean and std of the generilized coordinates")
 else:
-  av = tf.reduce_mean(genCoordinates, 
+  av = tf.reduce_sum(genCoordinates, 
                     axis = 0, 
-                    keepdims =True ).numpy()[0]
-  std = tf.sqrt(tf.reduce_mean(tf.square(genCoordinates - av), 
+                    keepdims =True ).numpy()[0]/numNonZero
+  std = np.sqrt(tf.reduce_sum(tf.square(genCoordinates - av), 
                              axis = 0, 
-                             keepdims=True)).numpy()[0]
+                             keepdims=True).numpy()[0]/numNonZero)
 
 print("mean of the inputs are %.8f and %.8f"%(av[0], av[1]))
 print("std of the inputs are %.8f and %.8f"%(std[0], std[1]))
