@@ -1747,6 +1747,78 @@ def genDistInvPerNlist(Rin, Npoints, neighList, L, av = [0.0, 0.0], std = [1.0, 
     return R_Diff_total
 
 
+@tf.function
+def genDistInvPerNlistLoop(Rin, Npoints, neighList, L, av = [0.0, 0.0], std = [1.0, 1.0]):
+    # function to generate the generalized coordinates for periodic data
+    # the input has dimensions (Nsamples, Ncells*Np)
+    # the ouput has dimensions (Nsamples*Ncells*Np*(3*Np-1), 2)
+
+    # neighList is a (Nsample, Npoints, maxNeigh)
+
+    # add assert with respect to the input shape 
+    Nsamples = Rin.shape[0]
+    maxNumNeighs = neighList.shape[-1]
+    R2 = tf.reshape(Rin, (Nsamples, Npoints))
+
+
+    # we compute the difference between points in the same
+    # interaction list
+    absSamplesArray = []
+    invSamplesArray = []
+    for k in range(Nsamples):
+        Abs_Array = []
+        Abs_Inv_Array = []
+        for r in range(Npoints):
+            absDistArrayPoint = []
+            absInvArrayPoint =[]
+            for j in range(maxNumNeighs) :
+
+                if neighList[k,r,j] == -1:
+                    bnorm = tf.Variable(0.0)
+                    binv = tf.Variable(0.0)
+                else: 
+                  idx = neighList[k,r,j]
+                  # we substract
+                  a = tf.subtract(Rin[k,r], Rin[k,idx]) 
+                  # applying the periodicity
+                  b = a - L*tf.round(a/L)
+
+                  # we apply the % TODO check when is the best place for the normalization
+                  bnorm = (tf.abs(b) -av[1])/std[1] 
+                  # we need to smear it a little bit 
+                  binv = (tf.abs(tf.math.reciprocal(b)) -av[0])/std[0]
+
+                absDistArrayPoint.append(tf.expand_dims(bnorm, axis = 0))
+                absInvArrayPoint.append(tf.expand_dims(binv, axis = 0))
+            Abs_Array.append(tf.expand_dims(
+                             tf.concat(absDistArrayPoint, axis = 0), 0))
+            Abs_Inv_Array.append(tf.expand_dims(
+                                 tf.concat(absInvArrayPoint, axis = 0), 0))
+
+        absSamplesArray.append(tf.expand_dims(
+                                 tf.concat(Abs_Array, axis = 0), 0))
+        invSamplesArray.append(tf.expand_dims(
+                                 tf.concat(Abs_Inv_Array, axis = 0), 0))
+
+
+    # concatenating the lists of tensors to a large tensor
+    absDistList = tf.concat(absSamplesArray, axis = 0)
+    absInvList = tf.concat(invSamplesArray, axis = 0)
+
+
+    # R_Diff_abs = absDistList)-
+    # R_Diff_inv = (tf.abs(absInvList)-av[0])/std[0]
+    # or using the reciprocal 
+    #R_Diff_abs = tf.math.reciprocal(tf.abs(absDistList) + 0.00001)
+
+    R_Diff_total = tf.concat([tf.reshape(absInvList, (-1,1)), 
+                              tf.reshape(absDistList, (-1,1))], axis = 1)
+
+    # asserting the final size of the tensor
+    # assert R_Diff_total.shape[0] == Nsamples*Ncells*Np*(3*Np-1)
+
+    return R_Diff_total
+
 def computInterList( Rinnumpy, L,  radious, maxNumNeighs):
   Nsamples, Npoints = Rinnumpy.shape
 
