@@ -1774,8 +1774,8 @@ def genDistInvPerNlistLoop(Rin, Npoints, neighList, L, av = [0.0, 0.0], std = [1
             for j in range(maxNumNeighs) :
 
                 if neighList[k,r,j] == -1:
-                    bnorm = tf.Variable(0.0)
-                    binv = tf.Variable(0.0)
+                    bnorm = tf.zeros(1)  
+                    binv = tf.zeros(1)  
                 else: 
                   idx = neighList[k,r,j]
                   # we substract
@@ -1784,12 +1784,12 @@ def genDistInvPerNlistLoop(Rin, Npoints, neighList, L, av = [0.0, 0.0], std = [1
                   b = a - L*tf.round(a/L)
 
                   # we apply the % TODO check when is the best place for the normalization
-                  bnorm = (tf.abs(b) -av[1])/std[1] 
+                  bnorm = tf.expand_dims((tf.abs(b) -av[1])/std[1], axis = 0)
                   # we need to smear it a little bit 
-                  binv = (tf.abs(tf.math.reciprocal(b)) -av[0])/std[0]
+                  binv = tf.expand_dims((tf.abs(tf.math.reciprocal(b)) -av[0])/std[0], axis = 0)
 
-                absDistArrayPoint.append(tf.expand_dims(bnorm, axis = 0))
-                absInvArrayPoint.append(tf.expand_dims(binv, axis = 0))
+                absDistArrayPoint.append(bnorm)
+                absInvArrayPoint.append(binv)
             Abs_Array.append(tf.expand_dims(
                              tf.concat(absDistArrayPoint, axis = 0), 0))
             Abs_Inv_Array.append(tf.expand_dims(
