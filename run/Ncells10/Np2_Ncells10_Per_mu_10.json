@@ -1,0 +1,27 @@
+{
+    "with_distrib":     false,
+    "_comment":         " model parameters",
+    "seed":             1234567891011121314,
+    "filterNet":        [2, 4, 8, 16, 32],
+    "fittingNet":       [32, 32, 32, 32, 32, 32],
+    "Ncells":            10,
+    "Np":                2,
+    "lengthCell":        1.0,
+    "Nsamples":          10000,
+    "minDelta":          0.1,
+    "potentialType":    "Periodic",
+    "mu":                10,
+    "dataFolder":       "../../data/",
+    "loadFile" :        "",
+    "epochsPerStair":    10,
+    "batchSize":         8,
+    "numberEpoch" :      1000,
+    "learningRate" :     0.0001,
+    "decayRate" :        0.95,
+    "weightE":          [0.0, 1.0],
+    "weightF":          [10.0, 1.0],
+    "widowWidth":        3.0,
+    "widowTransition":   0.5,
+    "_comment":         "that's all"
+}
+
