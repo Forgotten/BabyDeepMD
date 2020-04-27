@@ -1854,3 +1854,116 @@ def computInterList( Rinnumpy, L,  radious, maxNumNeighs):
   Idx = np.array(Idex)
 
   return Idx
+
+@tf.function
+def genDistInvPerNlist2D(Rin, Npoints, neighList, L, av = [0.0, 0.0], std = [1.0, 1.0]):
+    # function to generate the generalized coordinates for periodic data
+    # the input has dimensions (Nsamples, Ncells*Np)
+    # the ouput has dimensions (Nsamples*Ncells*Np*(3*Np-1), 2)
+
+    # neighList is a (Nsample, Npoints, maxNeigh)
+
+    # add assert with respect to the input shape 
+    Nsamples = Rin.shape[0]
+    maxNumNeighs = neighList.shape[-1]
+    R2 = tf.reshape(Rin, (Nsamples, Npoints, 2))
+
+    Abs_Array = []
+    Abs_Inv_Array = []
+    # we compute the difference between points in the same
+    # interaction list
+
+    Idx1 = tf.constant(np.linspace(0,Nsamples-1, Nsamples).astype(np.int64).reshape((-1,1)))
+
+    for r in range(Npoints):
+        absDistArrayPoint = []
+        absInvArrayPoint =[]
+        for j in range(maxNumNeighs) :
+            # we consider the indices and the concatenat with the other set
+            # in order to have a matrix having the coordinates in Rin
+            Idx = tf.concat([Idx1, tf.reshape(neighList[:,r,j],(-1,1))], axis = 1) 
+            # we create a filter for the unwanted data points 
+            filter = tf.cast(Idx > -1, tf.int64)     
+            # we substract
+            a = tf.subtract(Rin[:,r,:], tf.gather_nd(Rin, Idx*filter,:)) 
+            # apply filter         
+            a = tf.multiply(a, tf.cast(filter[:,1], tf.float32))
+            # applying the periodicity
+            b = a - L*tf.round(a/L)
+
+            # we apply the % TODO check when is the best place for the normalization
+            bnorm = (tf.reduce_sum(tf.square(tf.expand_dims(b,-1)), axis = 2)) 
+            # we need to smear it a little bit 
+            binv = (tf.abs(tf.math.reciprocal(tf.expand_dims(b,-1)-0.000001)) -av[0])/std[0]
+            bvector = 
+
+            # we filtered out the padding
+            bnormFilt = tf.multiply(bnorm,
+                                    tf.reshape(tf.cast(filter[:,1], tf.float32),(-1,1))) 
+            binvFilt = tf.multiply(binv,
+                                    tf.reshape(tf.cast(filter[:,1], tf.float32),(-1,1)))
+
+            absDistArrayPoint.append(bnormFilt)
+            absInvArrayPoint.append(binvFilt)
+        Abs_Array.append(tf.expand_dims(
+                         tf.concat(absDistArrayPoint, axis = 1), 1))
+        Abs_Inv_Array.append(tf.expand_dims(
+                             tf.concat(absInvArrayPoint, axis = 1), 1))
+
+    # concatenating the lists of tensors to a large tensor
+    absDistList = tf.concat(Abs_Array, axis = 1)
+    absInvList = tf.concat(Abs_Inv_Array, axis = 1)
+
+
+    # R_Diff_abs = absDistList)-
+    # R_Diff_inv = (tf.abs(absInvList)-av[0])/std[0]
+    # or using the reciprocal 
+    #R_Diff_abs = tf.math.reciprocal(tf.abs(absDistList) + 0.00001)
+
+    R_Diff_total = tf.concat([tf.reshape(absInvList, (-1,1)), 
+                              tf.reshape(absDistList, (-1,1))], axis = 1)
+
+    # asserting the final size of the tensor
+    # assert R_Diff_total.shape[0] == Nsamples*Ncells*Np*(3*Np-1)
+
+    return R_Diff_total
+
+
+def computInterList( Rinnumpy, L,  radious, maxNumNeighs):
+  Nsamples, Npoints, dimension = Rinnumpy.shape
+
+  
+  # computing the relative coordinates
+  DistNumpy = Rinnumpy.reshape(Nsamples,Npoints,1, dimension) \
+              - Rinnumpy.reshape(Nsamples,1, Npoints,dimension)
+
+  # periodicing the distance
+  DistNumpy = DistNumpy - L*np.round(DistNumpy/L)
+
+  DistNumpy = np.sqrt(np.sum(np.square(DistNumpy), axis = -1))
+
+  # loop to get the proper indices and padding the rest
+  Idex = []
+  for ii in range(0,Nsamples):
+    sampleIdx = []
+    for jj in range(0, Npoints):
+      localIdx = []
+      for kk in range(0, Npoints):
+        if jj!= kk and np.abs(DistNumpy[ii,jj,kk]) < radious:
+          # checking that we are not going over the mac number of
+          # neighboors, if so we break the loop
+          if len(localIdx) >= maxNumNeighs:
+            print("Number of neighboors is larger than the max number allowed")
+            break
+          localIdx.append(kk)
+
+      while len(localIdx) < maxNumNeighs:
+        localIdx.append(-1)
+      sampleIdx.append(localIdx)
+
+    Idex.append(sampleIdx)
+
+# converting the list of points to an numpy array.
+  Idx = np.array(Idex)
+
+  return Idx
