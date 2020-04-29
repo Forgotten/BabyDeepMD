@@ -206,7 +206,7 @@ def gaussianNUFFT(x, xCenter, tau):
 def gaussianDeconv(k, tau):
 	return np.sqrt(np.pi/tau)*np.exp( np.square(k)*tau)
 
-def computeDerPotPer(Nx, mu, Ls, xCenter = 0, nPointSmear = 10):
+def computeDerPotPer(Nx, mu, Ls, xCenter = 0, nPointSmear = 10):   
 	
 	xGrid = np.linspace(0, Ls, Nx+1)[:-1] 
 	kGrid = 2*np.pi*np.linspace(-(Nx//2), Nx//2, Nx)/Ls      
@@ -276,8 +276,8 @@ def potentialLJ(x,y, epsilon, sigma):
 	return 4*epsilon*(pow(sigma/np.abs(x-y), 12) - pow(sigma/np.abs(x-y), 6) )
 
 def forcesLJ(x,y, epsilon, sigma):
-	return 4*epsilon*(-12*sigma*np.sign(x-y)*pow(sigma/np.abs(x-y), 11) + \
-						6*sigma*np.sign(x-y)*pow(sigma/np.abs(x-y), 5) )
+	return 4*epsilon*(-12*sigma*np.sign(x-y)*pow(sigma/np.abs(x-y), 13) + \
+						6*sigma*np.sign(x-y)*pow(sigma/np.abs(x-y), 7) )
 
 def genDataLJ_FPer(Ncells, Np, sigma, Nsamples, minDelta = 0.0, Lcell = 0.0): 
 

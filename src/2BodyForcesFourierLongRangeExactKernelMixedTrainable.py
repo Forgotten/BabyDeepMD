@@ -143,10 +143,10 @@ KernelGen1 = tf.reshape(tf.reduce_sum(tf.sqrt(tf.math.reciprocal(ExtCoords)), ax
 KernelGen2 = tf.reshape(tf.reduce_sum(tf.square(tf.math.reciprocal(ExtCoords)), axis = 2), (-1, 1))
 KernelGen3 = tf.reshape(tf.reduce_sum(tf.math.exp(-mu*ExtCoords), axis = 2), (-1, 1))
 
-mean0, std0 =  tf.math.reduce_std(KernelGen0), tf.math.reduce_mean(KernelGen0)
-mean1, std1 =  tf.math.reduce_std(KernelGen1), tf.math.reduce_mean(KernelGen1)
-mean2, std2 =  tf.math.reduce_std(KernelGen2), tf.math.reduce_mean(KernelGen2)
-mean3, std3 =  tf.math.reduce_std(KernelGen3), tf.math.reduce_mean(KernelGen3)
+std0, mean0 =  tf.math.reduce_std(KernelGen0), tf.math.reduce_mean(KernelGen0)
+std1, mean1 =  tf.math.reduce_std(KernelGen1), tf.math.reduce_mean(KernelGen1)
+std2, mean2 =  tf.math.reduce_std(KernelGen2), tf.math.reduce_mean(KernelGen2)
+std3, mean3 =  tf.math.reduce_std(KernelGen3), tf.math.reduce_mean(KernelGen3)
 
 meanLongRange = np.array([mean0.numpy(), mean1.numpy(), mean2.numpy(), mean3.numpy()])
 stdLongRange = np.array([std0.numpy(), std1.numpy(), std2.numpy(), std3.numpy()])
