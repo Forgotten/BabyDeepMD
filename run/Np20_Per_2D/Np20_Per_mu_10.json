@@ -4,7 +4,7 @@
     "seed":             1234567891011121314,
     "filterNet":        [2, 4, 8, 16],
     "fittingNet":       [32, 32, 32, 32, 32, 32],
-    "Ncells":            5,
+    "Ncells":            3,
     "Np":                2,
     "lengthCell":        1.0,
     "Nsamples":          1000,

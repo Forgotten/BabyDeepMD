@@ -183,6 +183,7 @@ class DeepMDsimpleEnergy(tf.keras.Model):
 
   def __init__(self,
                Npoints,
+               L, 
                maxNumNeighs = 4,
                descripDim = [2, 4, 8, 16, 32],
                fittingDim = [16, 8, 4, 2, 1],
@@ -190,8 +191,10 @@ class DeepMDsimpleEnergy(tf.keras.Model):
                std = [1.0, 1.0],
                name='deepMDsimpleEnergy',
                **kwargs):
+
     super(DeepMDsimpleEnergy, self).__init__(name=name, **kwargs)
 
+    self.L = L
     # this should be done on the fly, for now we will keep it here
     self.Npoints = Npoints
     # maximum number of neighbors
@@ -222,15 +225,16 @@ class DeepMDsimpleEnergy(tf.keras.Model):
       # (Nsamples, Npoints)
       # in this case we are only considering the distances
       genCoordinates = genDistInvPerNlist2D(inputs, self.Npoints, 
-                                          neighList, L, 
+                                          neighList, self.L, 
                                           self.av, self.std) # this need to be fixed
       # (Nsamples*Npoints*maxNumNeighs, 2)
 
       # the L1 and L2 functions only depends on the first entry
-      L1   = self.layerPyramid(genCoordinates[:,:1])*genCoordinates[:,:1]
+      L1   = self.layerPyramid(genCoordinates[:,:1]-self.av[0])*genCoordinates[:,:1]
       # (Nsamples*Npoints*maxNumNeighs, descriptorDim)
-      L2   = self.layerPyramidInv(genCoordinates[:,:1])*genCoordinates[:,:1]
+      L2   = self.layerPyramidInv(genCoordinates[:,:1]-self.av[0])*genCoordinates[:,:1]
       # (Nsamples*Npoints*maxNumNeighs, descriptorDim)
+        
       # here we need to assemble the Baby Deep MD descriptor
       genCoord = tf.reshape(genCoordinates, (-1, self.maxNumNeighs, 3))
       # (Nsamples*Npoints, maxNumNeighs, 3)
@@ -252,16 +256,8 @@ class DeepMDsimpleEnergy(tf.keras.Model):
       # (Nsamples*Npoints, descriptorDim, 3)
 
       D = tf.matmul(Omega1, Omega2, transpose_b = True)
-      D1 = tf.reshape(D, (-1, model.descriptorDim**2))
-      # (Nsamples*Npoints, descriptorDim, descriptorDim)
 
-      # LL = tf.concat([L1, L2], axis = 1)
-      # # (Nsamples*Npoints*maxNumNeighs, 2*descriptorDim)
-      # Dtemp = tf.reshape(LL, (-1, self.maxNumNeighs, 
-      #                         2*self.descriptorDim ))
-      # # (Nsamples*Npoints, maxNumNeighs, descriptorDim)
-      # D = tf.reduce_sum(Dtemp, axis = 1)
-      # # (Nsamples*Npoints, descriptorDim)
+      D1 = tf.reshape(D, (-1, model.descriptorDim**2))
 
       F2 = self.fittingNetwork(D1)
       F = self.linfitNet(F2)
@@ -274,7 +270,7 @@ class DeepMDsimpleEnergy(tf.keras.Model):
     return Energy, Forces
 
 ## Defining the model
-model = DeepMDsimpleEnergy(Npoints, maxNumNeighs,
+model = DeepMDsimpleEnergy(Npoints, L, maxNumNeighs,
                            filterNet, fittingNet, 
                             av, std)
 
@@ -323,89 +319,129 @@ optimizer = tf.keras.optimizers.Adam(learning_rate=lrSchedule)
 
 loss_metric = tf.keras.metrics.Mean()
 
-for cycle, (epochs, batchSizeL) in enumerate(zip(Nepochs, batchSizeArray)):
+############### one step of gradient ##############
+# this is only for debugging 
 
-  print('++++++++++++++++++++++++++++++', flush = True) 
-  print('Start of cycle %d' % (cycle,))
-  print('Total number of epochs in this cycle: %d'%(epochs,))
-  print('Batch size in this cycle: %d'%(batchSizeL,))
+outputsF = tf.Variable(forcesArray[:100,:,:], dtype=tf.float32)     
+outputsE = tf.Variable(potentialArray[:100,:], dtype=tf.float32)    
 
-# we need to modify this one later
-  weightE = 0.0
-  weightF = 1.0
+Rinnumpy = Rin.numpy()
+weightF = 1.0 
 
-  x_train = (pointsArray, potentialArray, forcesArray)
+Idx = computInterList2Dv2(Rinnumpy, L,  radious, maxNumNeighs)
+# dimension are (Nsamples, Npoints and MaxNumneighs)
+neighList = tf.Variable(Idx)
 
-  train_dataset = tf.data.Dataset.from_tensor_slices(x_train)
-  train_dataset = train_dataset.shuffle(buffer_size=10000).batch(batchSizeL)
+with tf.GradientTape() as tape:
 
-  # Iterate over epochs.
-  for epoch in range(epochs):
-    print('============================', flush = True) 
-    print('Start of epoch %d' % (epoch,))
+  tape.watch(model.trainable_variables)
+
+  # we use the model the predict the outcome
+  predE, predF = model(Rin, neighList, training=True)
+  # fidelity loss usin mse
+  lossF = mse_loss_fn(predF, outputsF)/outputsF.shape[-2]
+
+  total_loss = weightF*lossF
+
+
+# compute the gradients of the total loss with respect to the trainable variables
+gradients = tape.gradient(total_loss, model.trainable_variables)
+# update the parameters of the network
+optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+
+#####################################################
+
+
+
+####################training loop ##################################
+
+# for cycle, (epochs, batchSizeL) in enumerate(zip(Nepochs, batchSizeArray)):
+
+#   print('++++++++++++++++++++++++++++++', flush = True) 
+#   print('Start of cycle %d' % (cycle,))
+#   print('Total number of epochs in this cycle: %d'%(epochs,))
+#   print('Batch size in this cycle: %d'%(batchSizeL,))
+
+# # we need to modify this one later
+#   weightE = 0.0
+#   weightF = 1.0
+
+#   x_train = (pointsArray, potentialArray, forcesArray)
+
+#   train_dataset = tf.data.Dataset.from_tensor_slices(x_train)
+#   train_dataset = train_dataset.shuffle(buffer_size=10000).batch(batchSizeL)
+
+#   # Iterate over epochs.
+#   for epoch in range(epochs):
+#     print('============================', flush = True) 
+#     print('Start of epoch %d' % (epoch,))
   
-    loss_metric.reset_states()
+#     loss_metric.reset_states()
   
-    # Iterate over the batches of the dataset.
-    for step, x_batch_train in enumerate(train_dataset):
+#     # Iterate over the batches of the dataset.
+#     for step, x_batch_train in enumerate(train_dataset):
 
-      Rinnumpy = x_batch_train[0].numpy()
-      Idx = computInterList2Dv2(Rinnumpy, L,  radious, maxNumNeighs)
-      neighList = tf.Variable(Idx)
+#       Rinnumpy = x_batch_train[0].numpy()
+#       Idx = computInterList2Dv2(Rinnumpy, L,  radious, maxNumNeighs)
+#       neighList = tf.Variable(Idx)
 
-      loss = trainStepList(model, optimizer, mse_loss_fn,
-                           x_batch_train[0], neighList,
-                           x_batch_train[1], 
-                           x_batch_train[2], 
-                        weightE, weightF)
-      loss_metric(loss)
+#       loss = trainStepList(model, optimizer, mse_loss_fn,
+#                            x_batch_train[0], neighList,
+#                            x_batch_train[1], 
+#                            x_batch_train[2], 
+#                         weightE, weightF)
+#       loss_metric(loss)
   
-      if step % 100 == 0:
-        print('step %s: mean loss = %s' % (step, str(loss_metric.result().numpy())))
+#       if step % 100 == 0:
+#         print('step %s: mean loss = %s' % (step, str(loss_metric.result().numpy())))
 
-    # mean loss saved in the metric
-    meanLossStr = str(loss_metric.result().numpy())
-    # learning rate using the decay 
-    lrStr = str(optimizer._decayed_lr('float32').numpy())
-    print('epoch %s: mean loss = %s  learning rate = %s'%(epoch,
-                                                          meanLossStr,
-                                                          lrStr))
+#     # mean loss saved in the metric
+#     meanLossStr = str(loss_metric.result().numpy())
+#     # learning rate using the decay 
+#     lrStr = str(optimizer._decayed_lr('float32').numpy())
+#     print('epoch %s: mean loss = %s  learning rate = %s'%(epoch,
+#                                                           meanLossStr,
+#                                                           lrStr))
 
-  print("saving the weights")
-  model.save_weights(checkFile+"_cycle_"+str(cycle)+".h5")
-
-
-##### testing ######
-pointsTest, \
-potentialTest, \
-forcesTest  = genDataPer2D(Ncells, Np, mu, 1000, minDelta, Lcell)
-
-forcesTestRscl =  forcesTest- forcesMean
-forcesTestRscl = forcesTestRscl/forcesStd
-
-potPred, forcePred = model(pointsTest)
-
-err = tf.sqrt(tf.reduce_sum(tf.square(forcePred - forcesTestRscl)))/tf.sqrt(tf.reduce_sum(tf.square(forcePred)))
-print("Relative Error in the forces is " +str(err.numpy()))
+#   print("saving the weights")
+#   model.save_weights(checkFile+"_cycle_"+str(cycle)+".h5")
 
 
-# # # # ################# Testing each step inside the model#####
+# ##### testing ######
+# pointsTest, \
+# potentialTest, \
+# forcesTest  = genDataPer2D(Ncells, Np, mu, 1000, minDelta, Lcell)
+
+# forcesTestRscl =  forcesTest- forcesMean
+# forcesTestRscl = forcesTestRscl/forcesStd
+
+# potPred, forcePred = model(pointsTest)
+
+# err = tf.sqrt(tf.reduce_sum(tf.square(forcePred - forcesTestRscl)))/tf.sqrt(tf.reduce_sum(tf.square(forcePred)))
+# print("Relative Error in the forces is " +str(err.numpy()))
+
+###################################################################
+
+# # # ################# Testing each step inside the model#####
+# inputs = Rin
+
 # with tf.GradientTape() as tape:
 #   # we watch the inputs 
-
+  
 #   tape.watch(inputs)
 #   # (Nsamples, Npoints)
 #   # in this case we are only considering the distances
 #   genCoordinates = genDistInvPerNlist2D(inputs, model.Npoints, 
-#                                       neighList, L, 
+#                                       neighList, model.L, 
 #                                       model.av, model.std) # this need to be fixed
 #   # (Nsamples*Npoints*maxNumNeighs, 2)
-
+  
 #   # the L1 and L2 functions only depends on the first entry
-#   L1   = model.layerPyramid(genCoordinates[:,:1])
+#   L1   = model.layerPyramid(genCoordinates[:,:1])*genCoordinates[:,:1]
 #   # (Nsamples*Npoints*maxNumNeighs, descriptorDim)
-#   L2   = model.layerPyramidInv(genCoordinates[:,:1])
+#   L2   = model.layerPyramidInv(genCoordinates[:,:1])*genCoordinates[:,:1]
 #   # (Nsamples*Npoints*maxNumNeighs, descriptorDim)
+    
 #   # here we need to assemble the Baby Deep MD descriptor
 #   genCoord = tf.reshape(genCoordinates, (-1, model.maxNumNeighs, 3))
 #   # (Nsamples*Npoints, maxNumNeighs, 3)
@@ -413,35 +449,18 @@ print("Relative Error in the forces is " +str(err.numpy()))
 #   # (Nsamples*Npoints, maxNumNeighs, descriptorDim)
 #   L1_omega = tf.transpose(L1_reshape, perm=(0,2,1))
 #   # (Nsamples*Npoints, descriptorDim, maxNumNeighs)
-
 #   L2_reshape = tf.reshape(L2, (-1, model.maxNumNeighs, model.descriptorDim))
 #   # (Nsamples*Npoints, maxNumNeighs, descriptorDim)
-
 #   L2_omega = tf.transpose(L2_reshape, perm=(0,2,1))
 #   # (Nsamples*Npoints, descriptorDim, maxNumNeighs)
-
 #   Omega1 = tf.matmul(L1_omega, genCoord)
 #   # (Nsamples*Npoints, descriptorDim, 3)
-
 #   Omega2 = tf.matmul(L2_omega, genCoord)
 #   # (Nsamples*Npoints, descriptorDim, 3)
-
 #   D = tf.matmul(Omega1, Omega2, transpose_b = True)
-
 #   D1 = tf.reshape(D, (-1, model.descriptorDim**2))
-#   # (Nsamples*Npoints, descriptorDim, descriptorDim)
-#   # LL = tf.concat([L1, L2], axis = 1)
-#   # # (Nsamples*Npoints*maxNumNeighs, 2*descriptorDim)
-#   # Dtemp = tf.reshape(LL, (-1, model.maxNumNeighs, 
-#   #                         2*model.descriptorDim ))
-#   # # (Nsamples*Npoints, maxNumNeighs, descriptorDim)
-#   # D = tf.reduce_sum(Dtemp, axis = 1)
-#   # # (Nsamples*Npoints, descriptorDim)
-
 #   F2 = model.fittingNetwork(D1)
 #   F = model.linfitNet(F2)
-
 #   Energy = tf.reduce_sum(tf.reshape(F, (-1, model.Npoints)),
 #                           keepdims = True, axis = 1)
-
-Forces = -tape.gradient(Energy, inputs)
+# Forces = -tape.gradient(Energy, inputs)
