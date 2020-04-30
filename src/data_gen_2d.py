@@ -4,8 +4,26 @@ def potential(x,y, mu):
 	return -np.exp(-mu*np.sqrt(np.sum(np.square(y - x), axis = -1)))
 
 def forces(x,y, mu):
-	return -mu*(y - x)/(np.finfo(float).eps+np.sqrt(np.sum(np.square(y - x), axis = -1, keepdims = True)))\
+	return -mu*(y - x)/(np.finfo(float).eps+np.sqrt(np.sum(np.square(y - x), \
+													       axis = -1, keepdims = True)))\
 		   *np.exp(-mu*np.sqrt(np.sum(np.square(y - x), axis = -1, keepdims = True)))
+
+def potentialPer(x,y, mu, L):
+	shift_x = np.reshape(np.array([L, 0.]), (1,1,2))
+	shift_y = np.reshape(np.array([0., L]), (1,1,2))
+
+	return potential(x,y, mu) + potential(x+shift_x,y, mu) + potential(x-shift_x,y, mu)\
+		   +potential(x+shift_y,y, mu) + potential(x+shift_x+shift_y,y, mu) + potential(x-shift_x+shift_y,y, mu) \
+		   +potential(x-shift_y,y, mu) + potential(x+shift_x-shift_y,y, mu) + potential(x-shift_x-shift_y,y, mu)
+
+
+def forcesPer(x,y, mu, L):
+	shift_x = np.reshape(np.array([L, 0.]), (1,1,2))
+	shift_y = np.reshape(np.array([0., L]), (1,1,2))
+
+	return   forces(x,y, mu) + forces(x+shift_x,y, mu) + forces(x-shift_x,y, mu)\
+		   + forces(x+shift_y,y, mu) + forces(x+shift_x+shift_y,y, mu) + forces(x-shift_x+shift_y,y, mu)\
+		   + forces(x-shift_y,y, mu) + forces(x+shift_x-shift_y,y, mu) + forces(x-shift_x-shift_y,y, mu)
 
 
 def genDataPer2D(Ncells, Np, mu, Nsamples, minDelta = 0.0, Lcell = 0.0): 
@@ -14,28 +32,34 @@ def genDataPer2D(Ncells, Np, mu, Nsamples, minDelta = 0.0, Lcell = 0.0):
 	potentialArray = np.zeros((Nsamples,1))
 	forcesArray = np.zeros((Nsamples, Np*Ncells**2, 2))
 
+
 	if Lcell == 0.0 :
 		sizeCell = 1/Ncells
 	else :
 		sizeCell = Lcell
 
+	L = sizeCell*Ncells
+
 	midPoints = np.linspace(sizeCell/2.0,Ncells*sizeCell-sizeCell/2.0, Ncells)
 
 	xx, yy = np.meshgrid(midPoints, midPoints)
 
-	midPoints = np.concatenate([np.reshape(xx, (Np,Np,1,1)), 
-								np.reshape(yy, (Np,Np,1,1))], axis = -1) 
+	midPoints = np.concatenate([np.reshape(xx, (Ncells,Ncells,1,1)), 
+								np.reshape(yy, (Ncells,Ncells,1,1))], axis = -1) 
 
 	for i in range(Nsamples):
 
-		points = midPoints + sizeCell*(np.random.rand(Np, Np, Ncells,2) -0.5)
+		points = midPoints + sizeCell*(np.random.rand(Ncells, Ncells, Np,2) -0.5)
 
-		distPoints = np.sqrt(np.sum(np.square(np.reshape(points, (-1,1,2)) 
-											  -np.reshape(points, (1,-1,2))), axis=-1))
+		relPoints = np.reshape(points, (-1,1,2)) -np.reshape(points, (1,-1,2))
+
+		relPointsPer = relPoints - L*np.round(relPoints/L)
+
+		distPoints = np.sqrt(np.sum(np.square(relPointsPer), axis=-1))
 
 		# we want to check that the points are not too close 
 		while np.min( distPoints[distPoints>0] ) < minDelta:
-			points = midPoints + sizeCell*(np.random.rand(Np, Np, Ncells,2)-0.5)
+			points = midPoints + sizeCell*(np.random.rand(Ncells, Ncells, Np,2)-0.5)
 			distPoints = np.sqrt(np.sum(np.square(np.reshape(points, (-1,1,2)) 
 											  -np.reshape(points, (1,-1,2))), axis=-1))
 
@@ -43,20 +67,21 @@ def genDataPer2D(Ncells, Np, mu, Nsamples, minDelta = 0.0, Lcell = 0.0):
 		points = np.reshape(points, (Np*Ncells**2,1,2))
 		pointsT = np.reshape(points, (1,Np*Ncells**2,2))
 
-		R = potential(points,pointsT, mu)
+		R = potentialPer(points,pointsT, mu, L)
 
 		RR = np.triu(R, 1)
 		potTotal = np.sum(RR)
 
 		potentialArray[i,:] = potTotal
 
-		F = forces(points,pointsT, mu)
+		F = forcesPer(points,pointsT, mu, L)
 
 		Forces = np.sum(F, axis = 1) 
 
 		forcesArray[i,:,:] = np.reshape(Forces,(Np*Ncells**2, 2))
 
 	return pointsArray, potentialArray, forcesArray
+
 
 
 
