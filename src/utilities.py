@@ -1886,6 +1886,7 @@ def genDistInvPerNlist2D(Rin, Npoints, neighList, L, av = [0.0, 0.0], std = [1.0
             filter = tf.cast(tf.reshape(neighList[:,r,j],(-1,1))!= r, tf.int64)     
             # we substract
             a = tf.subtract(Rin[:,r,:], tf.gather_nd(Rin, Idx)) 
+            a = tf.multiply(a, tf.cast(tf.tile(filter,(1,2)), tf.float32))
             # applying the periodicity
             b = a - L*tf.round(a/L)
 
