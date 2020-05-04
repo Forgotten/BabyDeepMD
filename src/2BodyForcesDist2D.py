@@ -156,7 +156,7 @@ Npoints = Np*Ncells**2
 
 
 genCoordinates = genDistInvPerNlist2D(Rin, Npoints, neighList, L)
-filter = tf.cast(tf.abs(tf.reduce_sum(genCoordinates, axis = -1))>0, tf.int32)
+filter = tf.cast(tf.reduce_sum(tf.abs(genCoordinates), axis = -1)>0, tf.int32)
 numNonZero =  tf.reduce_sum(filter, axis = 0).numpy()
 numTotal = genCoordinates.shape[0]  
 
@@ -321,9 +321,13 @@ loss_metric = tf.keras.metrics.Mean()
 
 ############### one step of gradient ##############
 # this is only for debugging 
+Rin = Rinput[:1,:,:]
+Rinnumpy = Rin.numpy()
+Idx = computInterList2Dv2(Rinnumpy, L,  radious, maxNumNeighs)
 
-outputsF = tf.Variable(forcesArray[:100,:,:], dtype=tf.float32)     
-outputsE = tf.Variable(potentialArray[:100,:], dtype=tf.float32)    
+neighList = tf.Variable(Idx) 
+outputsF = tf.Variable(forcesArray[:1,:,:], dtype=tf.float32)     
+outputsE = tf.Variable(potentialArray[:1,:], dtype=tf.float32)    
 
 Rinnumpy = Rin.numpy()
 weightF = 1.0 
