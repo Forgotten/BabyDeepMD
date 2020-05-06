@@ -12,6 +12,9 @@ from data_gen_2d import forces
 from utilities import computInterList2Dv2
 from utilities import genDistInvPerNlist2D
 
+from utilities import computInterList2D
+from utilities import genDistInvPerNlist2DSimple
+
 Ncells = 3
 Np = 2 
 mu = 10 
@@ -75,4 +78,14 @@ neighList = tf.Variable(neighList)
 Npoints = Np*Ncells**2
 
 R_diff = genDistInvPerNlist2D(Rin, Npoints, neighList, L)
+
+# old computation of the list (this needs to be properly optimized 
+# suing numba or something like that.)
+neighListSimple = computInterList2D(points, L,  radious, maxNumNeighs)
+
+neighListSimple = tf.Variable(neighListSimple)
+
+
+R_diffSimple = genDistInvPerNlist2DSimple(Rin, Npoints, neighListSimple, L)
+
 
