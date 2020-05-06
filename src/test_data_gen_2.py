@@ -15,6 +15,10 @@ from utilities import genDistInvPerNlist2D
 from utilities import computInterList2D
 from utilities import genDistInvPerNlist2DSimple
 
+from utilities import genDistInvPerNlist2Dwhere
+ 
+from utilities import genDistInvPerNlist2Dwherev2
+
 Ncells = 3
 Np = 2 
 mu = 10 
@@ -88,4 +92,6 @@ neighListSimple = tf.Variable(neighListSimple)
 
 R_diffSimple = genDistInvPerNlist2DSimple(Rin, Npoints, neighListSimple, L)
 
+R_diffwhere  = genDistInvPerNlist2Dwhere(Rin, Npoints, neighListSimple, L)
 
+R_diffwhere2  = genDistInvPerNlist2Dwherev2(Rin, Npoints, neighListSimple, L)
