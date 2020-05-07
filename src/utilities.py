@@ -1926,7 +1926,7 @@ def genDistInvPerNlist2Dwherev2(Rin, Npoints, neighList, L, av = [0.0, 0.0], std
             # we need to smear it a little bit 
             binv = (tf.abs(tf.math.reciprocal(bnorm_safe)))
 
-            binv_safe =  tf.where(filter[:,1]>0, binv, tf.zeros_like(filter[:,1]))
+            binv_safe =  tf.where(filter[:,1]>0, (binv-av[0])/std[0] , tf.zeros_like(filter[:,1]))
 
             # (Nsamples, 1)
             bvectorx = tf.multiply(bx, binv)

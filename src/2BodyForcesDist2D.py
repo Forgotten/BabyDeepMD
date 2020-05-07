@@ -230,9 +230,9 @@ class DeepMDsimpleEnergy(tf.keras.Model):
       # (Nsamples*Npoints*maxNumNeighs, 2)
 
       # the L1 and L2 functions only depends on the first entry
-      L1   = self.layerPyramid(genCoordinates[:,:1]-self.av[0])*genCoordinates[:,:1]
+      L1   = self.layerPyramid(genCoordinates[:,:1])*genCoordinates[:,:1]
       # (Nsamples*Npoints*maxNumNeighs, descriptorDim)
-      L2   = self.layerPyramidInv(genCoordinates[:,:1]-self.av[0])*genCoordinates[:,:1]
+      L2   = self.layerPyramidInv(genCoordinates[:,:1])*genCoordinates[:,:1]
       # (Nsamples*Npoints*maxNumNeighs, descriptorDim)
         
       # here we need to assemble the Baby Deep MD descriptor
