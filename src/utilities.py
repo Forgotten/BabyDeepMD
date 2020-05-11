@@ -1901,6 +1901,9 @@ def genDistInvPerNlist2Dwherev2(Rin, Npoints, neighList, L, av = [0.0, 0.0], std
             idx_y = tf.concat([Idx1, tf.reshape(neighList[:,r,j],(-1,1)), IdxDimy], axis = 1) 
             # we create a filter for the unwanted data points 
             filter = tf.cast(idx_x > -1, tf.float32)
+
+            idx_x = tf.cast(filter, tf.int64)*idx_x
+            idx_y = tf.cast(filter, tf.int64)*idx_y
             #(Nsamples, 1, 2)
             # we substract
 
@@ -1926,7 +1929,9 @@ def genDistInvPerNlist2Dwherev2(Rin, Npoints, neighList, L, av = [0.0, 0.0], std
             # we need to smear it a little bit 
             binv = (tf.abs(tf.math.reciprocal(bnorm_safe)))
 
-            binv_safe =  tf.where(filter[:,1]>0, binv, tf.zeros_like(filter[:,1]))
+            # normalizing the inverse, and adding making adding the proper zeros
+            binv_safe =  tf.where(filter[:,1]>0, (binv-av[0])/std[0], 
+                                                  tf.zeros_like(filter[:,1]))
 
             # (Nsamples, 1)
             bvectorx = tf.multiply(bx, binv)
@@ -1970,96 +1975,6 @@ def genDistInvPerNlist2Dwherev2(Rin, Npoints, neighList, L, av = [0.0, 0.0], std
     
     return R_Diff_total
 
-
-@tf.function
-def genDistInvPerNlist2Dwhere(Rin, Npoints, neighList, L, av = [0.0, 0.0], std = [1.0, 1.0]):
-    # This function follows the same trick 
-    # function to generate the generalized coordinates for periodic data
-    # the input has dimensions (Nsamples, Ncells*Np)
-    # the ouput has dimensions (Nsamples*Ncells*Np*(3*Np-1), 2)
-
-    # neighList is a (Nsample, Npoints, maxNeigh)
-
-    # add assert with respect to the input shape 
-    Nsamples = Rin.shape[0]
-    maxNumNeighs = neighList.shape[-1]
-
-    Abs_Array = []
-    Idx1 = tf.constant(np.linspace(0,Nsamples-1, Nsamples).astype(np.int64).reshape((-1,1)))
-    IdxDimx= tf.constant(np.zeros((Nsamples,1)).astype(np.int64).reshape((-1,1)))
-    IdxDimy= tf.constant(np.ones((Nsamples,1)).astype(np.int64).reshape((-1,1)))
-
-    for r in range(Npoints):
-        absDistArrayPoint = []
-        # absInvArrayPoint =[]
-        for j in range(maxNumNeighs) :
-            # we consider the indices and the concatenat with the other set
-            # in order to have a matrix having the coordinates in Rin
-            idx_x = tf.concat([Idx1, tf.reshape(neighList[:,r,j],(-1,1)), IdxDimx], axis = 1) 
-            idx_y = tf.concat([Idx1, tf.reshape(neighList[:,r,j],(-1,1)), IdxDimy], axis = 1) 
-            # we create a filter for the unwanted data points 
-            filter = tf.cast(idx_x > -1, tf.float32)
-            #(Nsamples, 1, 2)
-            # we substract
-
-            safe_x  = tf.where(filter[:,1]>-1, tf.gather_nd(Rin, idx_x), tf.zeros_like(filter[:,1]))
-            safeRx  = tf.where(filter[:,1]>-1, Rin[:,r,0], tf.zeros_like(filter[:,1]))
-
-            safe_y  = tf.where(filter[:,1]>-1, tf.gather_nd(Rin, idx_y), tf.zeros_like(filter[:,1]))
-            safeRy  = tf.where(filter[:,1]>-1, Rin[:,r,1], tf.zeros_like(filter[:,1]))
-
-            ax = tf.subtract(safeRx, safe_x) 
-            ay = tf.subtract(safeRy, safe_y) 
-
-            # applying the periodicity
-            bx = ax - L*tf.round(ax/L)
-            by = ay - L*tf.round(ay/L)
-            # (Nsamples, dim)
-
-            # we apply the % TODO check when is the best place for the normalization
-            bnorm = tf.math.sqrt(tf.square(bx) + tf.square(by))
-            # (Nsamples, 1)
-
-            bnorm_safe = tf.where(filter[:,1]>-1, bnorm, tf.ones_like(filter[:,1]))
-            # we need to smear it a little bit 
-            binv = (tf.abs(tf.math.reciprocal(bnorm_safe)))
-            # (Nsamples, 1)
-            bvectorx = tf.multiply(bx, binv)
-            bvectory = tf.multiply(by, binv)
-            # (Nsamples, dims) where dims = 1
-
-            # we filtered out the padding
-            bnormFilt = tf.expand_dims(tf.multiply(binv,
-                                      tf.cast(filter[:,1], tf.float32)), 1) 
-            # (Nsamples, 1)
-            bvectorxFilt = tf.expand_dims(tf.multiply(bvectorx, 
-                                                      tf.cast(filter[:,1], 
-                                                              tf.float32)), 1)
-            # (Nsamples, 1)
-            bvectoryFilt = tf.expand_dims(tf.multiply(bvectory, 
-                                                      tf.cast(filter[:,1], 
-                                                              tf.float32)), 1)
-            # (Nsamples, 1)
-            bgen = tf.concat([bnormFilt, bvectorxFilt, bvectoryFilt], axis = -1)
-            absDistArrayPoint.append(tf.expand_dims(bgen, 1))
-            # (Nsamples, 1, 3)
-
-        Abs_Array.append(tf.expand_dims(
-                         tf.concat(absDistArrayPoint, axis = 1), 1))
-        # (Nsamples, 1, numMaxNeighs, 3)
-
-    # concatenating the lists of tensors to a large tensor
-    absDistList = tf.concat(Abs_Array, axis = 1)
-
-    # asserting the final size of the tensor
-    assert absDistList.shape[0] == Nsamples
-    assert absDistList.shape[1] == Npoints
-    assert absDistList.shape[2] == maxNumNeighs
-    assert absDistList.shape[3] == 3
-
-    R_Diff_total = tf.reshape(absDistList, (-1, 3))
-    
-    return R_Diff_total
 
 @tf.function
 def genDistInvPerNlist2DSimple(Rin, Npoints, neighList, L, av = [0.0, 0.0], std = [1.0, 1.0]):

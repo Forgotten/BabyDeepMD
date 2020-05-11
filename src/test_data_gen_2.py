@@ -92,6 +92,6 @@ neighListSimple = tf.Variable(neighListSimple)
 
 R_diffSimple = genDistInvPerNlist2DSimple(Rin, Npoints, neighListSimple, L)
 
-R_diffwhere  = genDistInvPerNlist2Dwhere(Rin, Npoints, neighListSimple, L)
+# R_diffwhere  = genDistInvPerNlist2Dwhere(Rin, Npoints, neighListSimple, L)
 
 R_diffwhere2  = genDistInvPerNlist2Dwherev2(Rin, Npoints, neighListSimple, L)
