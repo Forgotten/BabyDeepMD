@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np 
-
+from numba import jit 
 # file with a few helper functions
 
 # relative L2 misfit
@@ -1946,14 +1946,6 @@ def genDistInvPerNlist2Dwherev2(Rin, Npoints, neighList, L, av = [0.0, 0.0], std
             bvectoryFilt = tf.expand_dims(tf.multiply(bvectory,filter[:,1]), 1)
             # (Nsamples, 1)
 
-            # # we filtered out the padding (no casting necessary)
-            # bnormFilt = tf.expand_dims(binv_safe, 1) 
-            # # (Nsamples, 1)
-            # bvectorxFilt = tf.expand_dims(bvectorx, 1)
-            # # (Nsamples, 1)
-            # bvectoryFilt = tf.expand_dims(bvectory,1)
-            # # (Nsamples, 1)
-
             bgen = tf.concat([bnormFilt, bvectorxFilt, bvectoryFilt], axis = -1)
             absDistArrayPoint.append(tf.expand_dims(bgen, 1))
             # (Nsamples, 1, 3)
@@ -2175,6 +2167,7 @@ def computInterList2D(Rinnumpy, L,  radious, maxNumNeighs):
 
 # TODO: optimize the computation of the neighboor list. 
 # try to use the scikit learn KDtree. 
+@jit(nopython=True)
 def computInterList2DOpt(Rinnumpy, L,  radious, maxNumNeighs):
   # function to compute the interaction lists 
   # this function in agnostic to the dimension of the data.
@@ -2186,33 +2179,27 @@ def computInterList2DOpt(Rinnumpy, L,  radious, maxNumNeighs):
               - Rinnumpy.reshape(Nsamples,1, Npoints,dimension)
 
   # periodicing the distance
-  DistNumpy = DistNumpy - L*np.round(DistNumpy/L)
+  out = np.zeros_like(DistNumpy)
+  np.round(DistNumpy/L, 0, out)
+
+  DistNumpy = DistNumpy - L*out
 
   DistNumpy = np.sqrt(np.sum(np.square(DistNumpy), axis = -1))
 
   # loop to get the proper indices and padding the rest
-  Idex = []
+  Idx = np.zeros((Nsamples, Npoints, maxNumNeighs), dtype=np.int32) -1 
   for ii in range(0,Nsamples):
-    sampleIdx = []
     for jj in range(0, Npoints):
-      localIdx = []
+      ll = 0 
       for kk in range(0, Npoints):
         if jj!= kk and np.abs(DistNumpy[ii,jj,kk]) < radious:
           # checking that we are not going over the mac number of
           # neighboors, if so we break the loop
-          if len(localIdx) >= maxNumNeighs:
+          if ll >= maxNumNeighs:
             print("Number of neighboors is larger than the max number allowed")
             break
-          localIdx.append(kk)
-
-      while len(localIdx) < maxNumNeighs:
-        localIdx.append(-1)
-      sampleIdx.append(localIdx)
-
-    Idex.append(sampleIdx)
-
-# converting the list of points to an numpy array.
-  Idx = np.array(Idex)
+          Idx[ii,jj,ll] = kk
+          ll += 1 
 
   return Idx
 
