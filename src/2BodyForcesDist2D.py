@@ -240,24 +240,21 @@ class DeepMDsimpleEnergy(tf.keras.Model):
       # (Nsamples*Npoints, maxNumNeighs, 3)
       L1_reshape = tf.reshape(L1, (-1, self.maxNumNeighs, self.descriptorDim))
       # (Nsamples*Npoints, maxNumNeighs, descriptorDim)
-      L1_omega = tf.transpose(L1_reshape, perm=(0,2,1))
-      # (Nsamples*Npoints, descriptorDim, maxNumNeighs)
 
       L2_reshape = tf.reshape(L2, (-1, self.maxNumNeighs, self.descriptorDim))
       # (Nsamples*Npoints, maxNumNeighs, descriptorDim)
 
-      L2_omega = tf.transpose(L2_reshape, perm=(0,2,1))
-      # (Nsamples*Npoints, descriptorDim, maxNumNeighs)
+      Omega1 = tf.matmul(genCoord, L1_reshape, transpose_a = True)
+      # (Nsamples*Npoints, 3, descriptorDim)
 
-      Omega1 = tf.matmul(L1_omega, genCoord)
-      # (Nsamples*Npoints, descriptorDim, 3)
+      Omega2 =  tf.matmul(genCoord, L2_reshape, transpose_a = True)
+      # (Nsamples*Npoints, 3, descriptorDim)
 
-      Omega2 = tf.matmul(L2_omega, genCoord)
-      # (Nsamples*Npoints, descriptorDim, 3)
-
-      D = tf.matmul(Omega1, Omega2, transpose_b = True)
+      D = tf.matmul(Omega1, Omega2, transpose_a = True)
+      # (Nsamples*Npoints, descriptorDim, descriptorDim)
 
       D1 = tf.reshape(D, (-1, model.descriptorDim**2))
+      # (Nsamples*Npoints, descriptorDim*descriptorDim)
 
       F2 = self.fittingNetwork(D1)
       F = self.linfitNet(F2)
