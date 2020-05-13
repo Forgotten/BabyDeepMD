@@ -443,9 +443,9 @@ class pyramidLayer(tf.keras.layers.Layer):
     for k, (ker, b) in enumerate(zip(self.kernel[1:], self.bias[1:])):
       if self.num_outputs[k] == self.num_outputs[k+1]:
         x += self.actfn(tf.matmul(x, ker) + b)
-      elif 2*self.num_outputs[k] == self.num_outputs[k+1]:
-        # we try to keep the first features
-        x = tf.tile(x, [1,2]) + self.actfn(tf.matmul(x, ker) + b)
+      # elif 2*self.num_outputs[k] == self.num_outputs[k+1]:
+      #   # we try to keep the first features
+      #   x = tf.tile(x, [1,2]) + self.actfn(tf.matmul(x, ker) + b)
       else :
         x = self.actfn(tf.matmul(x, ker) + b)
     return x
