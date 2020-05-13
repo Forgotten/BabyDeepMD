@@ -16,7 +16,7 @@ import sys
 import json
 
 from data_gen_2d import genDataPer2D
-from utilities import genDistInvPerNlist2Dwherev2, trainStepList, computInterList2D
+from utilities import genDistInvPerNlist2Dwherev2, trainStepList, computInterList2DOpt
 from utilities import MyDenseLayer, pyramidLayer, pyramidLayerNoBias
 
 import os
@@ -149,7 +149,7 @@ L = Lcell*Ncells
 # computing the distances: 
 Rinnumpy = Rin.numpy()
 
-Idx = computInterList2D(Rinnumpy, L,  radious, maxNumNeighs)
+Idx = computInterList2DOpt(Rinnumpy, L,  radious, maxNumNeighs)
 # dimension are (Nsamples, Npoints and MaxNumneighs)
 neighList = tf.Variable(Idx)
 Npoints = Np*Ncells**2
@@ -230,9 +230,9 @@ class DeepMDsimpleEnergy(tf.keras.Model):
       # (Nsamples*Npoints*maxNumNeighs, 2)
 
       # the L1 and L2 functions only depends on the first entry
-      L1   = self.layerPyramid(genCoordinates[:,:1])*genCoordinates[:,:1]
+      L1   = self.layerPyramid(genCoordinates[:,:1])
       # (Nsamples*Npoints*maxNumNeighs, descriptorDim)
-      L2   = self.layerPyramidInv(genCoordinates[:,:1])*genCoordinates[:,:1]
+      L2   = self.layerPyramidInv(genCoordinates[:,:1])
       # (Nsamples*Npoints*maxNumNeighs, descriptorDim)
         
       # here we need to assemble the Baby Deep MD descriptor
@@ -320,7 +320,7 @@ loss_metric = tf.keras.metrics.Mean()
 # # this is only for debugging 
 # Rin = Rinput[:1,:,:]
 # Rinnumpy = Rin.numpy()
-# Idx = computInterList2D(Rinnumpy, L,  radious, maxNumNeighs)
+# Idx = computInterList2DOpt(Rinnumpy, L,  radious, maxNumNeighs)
 
 # neighList = tf.Variable(Idx) 
 # outputsF = tf.Variable(forcesArray[:1,:,:], dtype=tf.float32)     
@@ -329,7 +329,7 @@ loss_metric = tf.keras.metrics.Mean()
 # Rinnumpy = Rin.numpy()
 # weightF = 1.0 
 
-# Idx = computInterList2D(Rinnumpy, L,  radious, maxNumNeighs)
+# Idx = computInterList2DOpt(Rinnumpy, L,  radious, maxNumNeighs)
 # # dimension are (Nsamples, Npoints and MaxNumneighs)
 # neighList = tf.Variable(Idx)
 
@@ -383,7 +383,7 @@ for cycle, (epochs, batchSizeL) in enumerate(zip(Nepochs, batchSizeArray)):
     for step, x_batch_train in enumerate(train_dataset):
 
       Rinnumpy = x_batch_train[0].numpy()
-      Idx = computInterList2D(Rinnumpy, L,  radious, maxNumNeighs)
+      Idx = computInterList2DOpt(Rinnumpy, L,  radious, maxNumNeighs)
       neighList = tf.Variable(Idx)
 
       loss = trainStepList(model, optimizer, mse_loss_fn,

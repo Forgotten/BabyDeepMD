@@ -2179,11 +2179,12 @@ def computInterList2DOpt(Rinnumpy, L,  radious, maxNumNeighs):
               - Rinnumpy.reshape(Nsamples,1, Npoints,dimension)
 
   # periodicing the distance
+  # work around some quirks of numba with the np.round function
   out = np.zeros_like(DistNumpy)
   np.round(DistNumpy/L, 0, out)
-
   DistNumpy = DistNumpy - L*out
 
+  # computing the distance
   DistNumpy = np.sqrt(np.sum(np.square(DistNumpy), axis = -1))
 
   # loop to get the proper indices and padding the rest

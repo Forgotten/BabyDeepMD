@@ -18,7 +18,7 @@ import sys
 import json
 
 from data_gen_2d import genDataPer2D
-from utilities import genDistInvPerNlist2Dwherev2, trainStepList, computInterList2D
+from utilities import genDistInvPerNlist2Dwherev2, trainStepList, computInterList2DOpt
 from utilities import MyDenseLayer, pyramidLayer, pyramidLayerNoBias
 
 import os
@@ -151,7 +151,7 @@ L = Lcell*Ncells
 # computing the distances: 
 Rinnumpy = Rin.numpy()
 
-Idx = computInterList2D(Rinnumpy, L,  radious, maxNumNeighs)
+Idx = computInterList2DOpt(Rinnumpy, L,  radious, maxNumNeighs)
 # dimension are (Nsamples, Npoints and MaxNumneighs)
 neighList = tf.Variable(Idx)
 Npoints = Np*Ncells**2
@@ -334,7 +334,7 @@ for cycle, (epochs, batchSizeL) in enumerate(zip(Nepochs, batchSizeArray)):
     for step, x_batch_train in enumerate(train_dataset):
 
       Rinnumpy = x_batch_train[0].numpy()
-      Idx = computInterList2D(Rinnumpy, L,  radious, maxNumNeighs)
+      Idx = computInterList2DOpt(Rinnumpy, L,  radious, maxNumNeighs)
       neighList = tf.Variable(Idx)
 
       loss = trainStepList(model, optimizer, mse_loss_fn,
