@@ -155,8 +155,8 @@ Npoints = Np*Ncells**2
 
 
 genCoordinates = genDistInvPerNlist2DSmooth(Rin, Npoints, 
-                                            radious, smoothRadious, 
-                                            neighList, L)
+                                            neighList,radious, 
+                                            smoothRadious,  L)
 filter = tf.cast(tf.reduce_sum(tf.abs(genCoordinates), axis = -1)>0, tf.int32)
 numNonZero =  tf.reduce_sum(filter, axis = 0).numpy()
 numTotal = genCoordinates.shape[0]  
@@ -199,7 +199,7 @@ class DeepMDsimpleEnergy(tf.keras.Model):
 
     self.L = L
     self.rC = rC # cut-off (necessary for the cut-off function)
-    self.rSC = rSc # smooth cut-off
+    self.rSc = rSc # smooth cut-off
     # this should be done on the fly, for now we will keep it here
     self.Npoints = Npoints
     # maximum number of neighbors
