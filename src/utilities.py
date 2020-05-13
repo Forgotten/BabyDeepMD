@@ -11,13 +11,13 @@ def relMSElossfn(predF, outputsF):
 @tf.function
 def smoothCutoff(r, rSc, rC):
   # replacing the zeros by ones 
-  rSafe = tf.where(tf.abs(r) < 0.0001, r, tf.ones_like(r))
-  rInv = tf.where(r < rSc, tf.reciprocal(r), 
-                  tf.reciprocal(r)*0.5*(tf.cos( np.pi*(r - rSc)/(rC - rSc)) + 1 ))
+  rSafe = tf.where(tf.abs(r) > 0.0001, r, tf.ones_like(r))
+  rInv = tf.where(r < rSc, tf.math.reciprocal(r), 
+                  tf.math.reciprocal(r)*0.5*(tf.cos( np.pi*(r - rSc)/(rC - rSc)) + 1 ))
   # if r was zero we return 0, otherwise the return rInv
-  rOut = tf.where(tf.abs(r) < 0.0001, rInv, tf.zeros_like(r))
+  rOut = tf.where(tf.abs(r) > 0.0001, rInv, tf.zeros_like(r))
 
-return rOut
+  return rOut
 
 @tf.function
 def genCoord(Rin, Ncells, Np):
@@ -443,6 +443,9 @@ class pyramidLayer(tf.keras.layers.Layer):
     for k, (ker, b) in enumerate(zip(self.kernel[1:], self.bias[1:])):
       if self.num_outputs[k] == self.num_outputs[k+1]:
         x += self.actfn(tf.matmul(x, ker) + b)
+      elif 2*self.num_outputs[k] == self.num_outputs[k+1]:
+        # we try to keep the first features
+        x = tf.tile(x, [1,2]) + self.actfn(tf.matmul(x, ker) + b)
       else :
         x = self.actfn(tf.matmul(x, ker) + b)
     return x
