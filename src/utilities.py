@@ -2023,8 +2023,8 @@ def genDistInvPerNlist2DSmooth(Rin, Npoints, neighList, rC, rSc,
             safe_y  = tf.where(filter[:,1]>0, tf.gather_nd(Rin, idx_y), tf.zeros_like(filter[:,1]))
             safeRy  = tf.where(filter[:,1]>0, Rin[:,r,1], tf.zeros_like(filter[:,1]))
 
-            ax = tf.subtract(safeRx, safe_x) 
-            ay = tf.subtract(safeRy, safe_y) 
+            ax = tf.subtract(safe_x, safeRx) 
+            ay = tf.subtract(safe_y, safeRy) 
 
             # applying the periodicity
             bx = ax - L*tf.round(ax/L)
