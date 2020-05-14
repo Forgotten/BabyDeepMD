@@ -13,7 +13,7 @@ def smoothCutoff(r, rSc, rC):
   # replacing the zeros by ones 
   rSafe = tf.where(tf.abs(r) > 0.0001, r, tf.ones_like(r))
   rInv = tf.where(r < rSc, tf.math.reciprocal(r), 
-                  tf.math.reciprocal(r)*0.5*(tf.cos( np.pi*(r - rSc)/(rC - rSc)) + 1 ))
+                  tf.math.reciprocal(r)*0.5*(tf.cos(np.pi*(r - rSc)/(rC - rSc)) + 1 ))
   # if r was zero we return 0, otherwise the return rInv
   rOut = tf.where(tf.abs(r) > 0.0001, rInv, tf.zeros_like(r))
 

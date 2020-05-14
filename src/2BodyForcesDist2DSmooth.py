@@ -213,8 +213,6 @@ class DeepMDsimpleEnergy(tf.keras.Model):
     # we may need to use the tanh here
     self.layerPyramid   = pyramidLayer(descripDim, 
                                        actfn = tf.nn.tanh)
-    self.layerPyramidInv  = pyramidLayer(descripDim, 
-                                       actfn = tf.nn.tanh)
     
     # we may need to use the tanh especially here
     self.fittingNetwork = pyramidLayer(fittingDim, 
@@ -236,30 +234,29 @@ class DeepMDsimpleEnergy(tf.keras.Model):
       # (Nsamples*Npoints*maxNumNeighs, 2)
 
       # the L1 and L2 functions only depends on the first entry
-      L1   = self.layerPyramid(genCoordinates[:,:1])
+      G1   = self.layerPyramid(genCoordinates[:,:1])
       # (Nsamples*Npoints*maxNumNeighs, descriptorDim)
-      L2   = self.layerPyramidInv(genCoordinates[:,:1])
-      # (Nsamples*Npoints*maxNumNeighs, descriptorDim)
-        
+              
       # here we need to assemble the Baby Deep MD descriptor
       genCoord = tf.reshape(genCoordinates, (-1, self.maxNumNeighs, 3))
       # (Nsamples*Npoints, maxNumNeighs, 3)
-      L1_reshape = tf.reshape(L1, (-1, self.maxNumNeighs, self.descriptorDim))
+      G1_reshape = tf.reshape(G1, (-1, self.maxNumNeighs, self.descriptorDim))
       # (Nsamples*Npoints, maxNumNeighs, descriptorDim)
 
-      L2_reshape = tf.reshape(L2, (-1, self.maxNumNeighs, self.descriptorDim))
+      # we take half of the elements of G1
+      G2_reshape = G1_reshape[:,:,:self.descriptorDim//2]
       # (Nsamples*Npoints, maxNumNeighs, descriptorDim)
 
-      Omega1 = tf.matmul(genCoord, L1_reshape, transpose_a = True)
+      Omega1 = tf.matmul(genCoord, G1_reshape, transpose_a = True)
       # (Nsamples*Npoints, 3, descriptorDim)
 
-      Omega2 =  tf.matmul(genCoord, L2_reshape, transpose_a = True)
-      # (Nsamples*Npoints, 3, descriptorDim)
+      Omega2 =  tf.matmul(genCoord, G2_reshape, transpose_a = True)
+      # (Nsamples*Npoints, 3, descriptorDim//2)
 
       D = tf.matmul(Omega1, Omega2, transpose_a = True)
-      # (Nsamples*Npoints, descriptorDim, descriptorDim)
+      # (Nsamples*Npoints, descriptorDim, descriptorDim//2)
 
-      D1 = tf.reshape(D, (-1, model.descriptorDim**2))
+      D1 = tf.reshape(D, (-1, (model.descriptorDim//2)*model.descriptorDim))
       # (Nsamples*Npoints, descriptorDim*descriptorDim)
 
       F2 = self.fittingNetwork(D1)
@@ -434,43 +431,46 @@ print("Relative Error in the forces is " +str(err.numpy()))
 
 # # # ################# Testing each step inside the model#####
 # inputs = Rin
+# Rinnumpy = Rin.numpy()
+# Idx = computInterList2DOpt(Rinnumpy, L,  radious, maxNumNeighs)
+# # dimension are (Nsamples, Npoints and MaxNumneighs)
+# neighList = tf.Variable(Idx)
+# Npoints = Np*Ncells**2
 
 # with tf.GradientTape() as tape:
 #   # we watch the inputs 
-  
 #   tape.watch(inputs)
 #   # (Nsamples, Npoints)
 #   # in this case we are only considering the distances
 #   genCoordinates = genDistInvPerNlist2DSmooth(inputs, model.Npoints, 
-#                                       neighList, model.L, 
-#                                       model.av, model.std) # this need to be fixed
+#                                               neighList, model.rC, 
+#                                               model.rSc, model.L, 
+#                                               model.av, model.std) # this need to be fixed
 #   # (Nsamples*Npoints*maxNumNeighs, 2)
-  
 #   # the L1 and L2 functions only depends on the first entry
-#   L1   = model.layerPyramid(genCoordinates[:,:1])*genCoordinates[:,:1]
+#   G1   = model.layerPyramid(genCoordinates[:,:1])
 #   # (Nsamples*Npoints*maxNumNeighs, descriptorDim)
-#   L2   = model.layerPyramidInv(genCoordinates[:,:1])*genCoordinates[:,:1]
-#   # (Nsamples*Npoints*maxNumNeighs, descriptorDim)
-    
+                  
 #   # here we need to assemble the Baby Deep MD descriptor
 #   genCoord = tf.reshape(genCoordinates, (-1, model.maxNumNeighs, 3))
 #   # (Nsamples*Npoints, maxNumNeighs, 3)
-#   L1_reshape = tf.reshape(L1, (-1, model.maxNumNeighs, model.descriptorDim))
+#   G1_reshape = tf.reshape(G1, (-1, model.maxNumNeighs, model.descriptorDim))
 #   # (Nsamples*Npoints, maxNumNeighs, descriptorDim)
-#   L1_omega = tf.transpose(L1_reshape, perm=(0,2,1))
-#   # (Nsamples*Npoints, descriptorDim, maxNumNeighs)
-#   L2_reshape = tf.reshape(L2, (-1, model.maxNumNeighs, model.descriptorDim))
+#   # we take half of the elements of G1
+#   G2_reshape = G1_reshape[:,:,:model.descriptorDim//2]
 #   # (Nsamples*Npoints, maxNumNeighs, descriptorDim)
-#   L2_omega = tf.transpose(L2_reshape, perm=(0,2,1))
-#   # (Nsamples*Npoints, descriptorDim, maxNumNeighs)
-#   Omega1 = tf.matmul(L1_omega, genCoord)
-#   # (Nsamples*Npoints, descriptorDim, 3)
-#   Omega2 = tf.matmul(L2_omega, genCoord)
-#   # (Nsamples*Npoints, descriptorDim, 3)
-#   D = tf.matmul(Omega1, Omega2, transpose_b = True)
-#   D1 = tf.reshape(D, (-1, model.descriptorDim**2))
+#   Omega1 = tf.matmul(genCoord, G1_reshape, transpose_a = True)
+#   # (Nsamples*Npoints, 3, descriptorDim)
+#   Omega2 =  tf.matmul(genCoord, G2_reshape, transpose_a = True)
+#   # (Nsamples*Npoints, 3, descriptorDim//2)
+#   D = tf.matmul(Omega1, Omega2, transpose_a = True)
+#   # (Nsamples*Npoints, descriptorDim, descriptorDim//2)
+#   D1 = tf.reshape(D, (-1, (model.descriptorDim//2)*model.descriptorDim))
+#   #  (Nsamples*Npoints, descriptorDim*descriptorDim)
 #   F2 = model.fittingNetwork(D1)
 #   F = model.linfitNet(F2)
 #   Energy = tf.reduce_sum(tf.reshape(F, (-1, model.Npoints)),
 #                           keepdims = True, axis = 1)
 # Forces = -tape.gradient(Energy, inputs)
+# return Energy, Forces
+
