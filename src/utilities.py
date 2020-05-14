@@ -2050,9 +2050,9 @@ def genDistInvPerNlist2DSmooth(Rin, Npoints, neighList, rC, rSc,
             bvectory = tf.multiply(by, binv)
             # (Nsamples, dims) where dims = 1
 
-            # (Nsamples, 1)
-            bvectorxS = tf.multiply(bvectorx, Sinv)
-            bvectoryS = tf.multiply(bvectory, Sinv)
+            # (Nsamples, 1) # we normalize the vectors
+            bvectorxS = tf.multiply(bvectorx, Sinv)/std[1]
+            bvectoryS = tf.multiply(bvectory, Sinv)/std[1]
             # (Nsamples, dims) where dims = 1
 
             # we filtered out the padding (no casting necessary)
