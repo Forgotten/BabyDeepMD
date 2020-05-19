@@ -1485,7 +1485,7 @@ class NUFFTLayerMultiChannelInit(tf.keras.layers.Layer):
     multImImfft2= tf.multiply(self.multipliersIm[1],Imrfft)
 
     multfft2 = tf.expand_dims(tf.complex(multReRefft2-multImImfft2, \
-                          multReImfft2+multImRefft2), 1)
+                                         multReImfft2+multImRefft2), 1)
 
     multFFT = tf.concat([multfft, multfft2], axis = 1)
 
@@ -1540,21 +1540,22 @@ class NUFFTLayerMultiChannelInitOneSided(tf.keras.layers.Layer):
     # we initialize the channel multipliers
     # we need to add a parametrized family in here
 
-
+    # init sigma
     initSigma = tf.keras.initializers.Constant([self.sigma])
 
-    
-
+    # init the multipliers this one follows the correct one,
     xExp = tf.expand_dims(4*np.pi*tf.math.reciprocal(tf.square(self.kGrid) + \
                                   tf.square(self.mu0)), 0)
 
     initKExp = tf.keras.initializers.Constant(xExp.numpy())
 
+    # init the other multiplier, this one we set it to mu = 1
     xExp2 = tf.expand_dims(4*np.pi*tf.math.reciprocal(tf.square(self.kGrid) + \
                                   tf.square(1.0)), 0)
 
     initKExp2 = tf.keras.initializers.Constant(xExp2.numpy())
 
+    # saving the variables to be learned
     self.sigmaVar = self.add_weight("sigma",
                        initializer=initSigma, shape = (1,))
 
