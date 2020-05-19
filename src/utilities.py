@@ -1472,8 +1472,8 @@ class NUFFTLayerMultiChannelInit(tf.keras.layers.Layer):
     # multfft = tf.multiply(self.multChannels*rfft)
     multReRefft = tf.multiply(self.multipliersRe[0],Rerfft)
     multReImfft = tf.multiply(self.multipliersIm[0],Rerfft)
-    multImImfft = tf.multiply(self.multipliersRe[0],Imrfft)
-    multImRefft = tf.multiply(self.multipliersIm[0],Imrfft)
+    multImRefft = tf.multiply(self.multipliersRe[0],Imrfft)
+    multImImfft= tf.multiply(self.multipliersIm[0],Imrfft)
 
     multfft = tf.expand_dims(tf.complex(multReRefft-multImImfft, \
                                         multReImfft+multImRefft),1)
@@ -1481,8 +1481,8 @@ class NUFFTLayerMultiChannelInit(tf.keras.layers.Layer):
     # multfft = tf.multiply(self.multChannels*rfft)
     multReRefft2 = tf.multiply(self.multipliersRe[1],Rerfft)
     multReImfft2 = tf.multiply(self.multipliersIm[1],Rerfft)
-    multImImfft2 = tf.multiply(self.multipliersRe[1],Imrfft)
-    multImRefft2 = tf.multiply(self.multipliersIm[1],Imrfft)
+    multImRefft2 = tf.multiply(self.multipliersRe[1],Imrfft)
+    multImImfft2= tf.multiply(self.multipliersIm[1],Imrfft)
 
     multfft2 = tf.expand_dims(tf.complex(multReRefft2-multImImfft2, \
                           multReImfft2+multImRefft2), 1)
@@ -1611,8 +1611,8 @@ class NUFFTLayerMultiChannelInitOneSided(tf.keras.layers.Layer):
     # multfft = tf.multiply(self.multChannels*rfft)
     multReRefft = tf.multiply(self.multipliersRe[0],Rerfft)
     multReImfft = tf.multiply(self.multipliersIm[0],Rerfft)
-    multImImfft = tf.multiply(self.multipliersRe[0],Imrfft)
-    multImRefft = tf.multiply(self.multipliersIm[0],Imrfft)
+    multImRefft = tf.multiply(self.multipliersRe[0],Imrfft)
+    multImImfft = tf.multiply(self.multipliersIm[0],Imrfft)
 
     multfft = tf.expand_dims(tf.complex(multReRefft-multImImfft, \
                                         multReImfft+multImRefft),1)
@@ -1620,8 +1620,8 @@ class NUFFTLayerMultiChannelInitOneSided(tf.keras.layers.Layer):
     # multfft = tf.multiply(self.multChannels*rfft)
     multReRefft2 = tf.multiply(self.multipliersRe[1],Rerfft)
     multReImfft2 = tf.multiply(self.multipliersIm[1],Rerfft)
-    multImImfft2 = tf.multiply(self.multipliersRe[1],Imrfft)
-    multImRefft2 = tf.multiply(self.multipliersIm[1],Imrfft)
+    multImRefft2 = tf.multiply(self.multipliersRe[1],Imrfft)
+    multImImfft2 = tf.multiply(self.multipliersIm[1],Imrfft)
 
     multfft2 = tf.expand_dims(tf.complex(multReRefft2-multImImfft2, \
                           multReImfft2+multImRefft2), 1)
