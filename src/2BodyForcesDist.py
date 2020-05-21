@@ -16,7 +16,7 @@ import sys
 import json
 
 from data_gen_1d import genDataYukawaPer
-from utilities import genDistInvPerNlist, trainStepList, computInterList
+from utilities import genDistInvPerNlist, trainStepList, computInterListOpt
 from utilities import MyDenseLayer, pyramidLayer, pyramidLayerNoBias
 
 import os
@@ -150,7 +150,7 @@ L = Lcell*Ncells
 # computing the distances: 
 Rinnumpy = Rin.numpy()
 
-Idx = computInterList(Rinnumpy, L,  radious, maxNumNeighs)
+Idx = computInterListOpt(Rinnumpy, L,  radious, maxNumNeighs)
 # dimension are (Nsamples, Npoints and MaxNumneighs)
 neighList = tf.Variable(Idx)
 Npoints = Np*Ncells
@@ -325,7 +325,7 @@ for cycle, (epochs, batchSizeL) in enumerate(zip(Nepochs, batchSizeArray)):
     for step, x_batch_train in enumerate(train_dataset):
 
       Rinnumpy = x_batch_train[0].numpy()
-      Idx = computInterList(Rinnumpy, L,  radious, maxNumNeighs)
+      Idx = computInterListOpt(Rinnumpy, L,  radious, maxNumNeighs)
       neighList = tf.Variable(Idx)
 
       loss = trainStepList(model, optimizer, mse_loss_fn,
@@ -358,7 +358,11 @@ forcesTest  = genDataYukawaPer(Ncells, Np, mu, 1000, minDelta, Lcell)
 forcesTestRscl =  forcesTest- forcesMean
 forcesTestRscl = forcesTestRscl/forcesStd
 
-potPred, forcePred = model(pointsTest)
+Idx = computInterListOpt(pointsTest, L,  radious, maxNumNeighs)
+# dimension are (Nsamples, Npoints and MaxNumneighs)
+neighList = tf.Variable(Idx)
+
+potPred, forcePred = model(pointsTest, neighList)
 
 err = tf.sqrt(tf.reduce_sum(tf.square(forcePred - forcesTestRscl)))/tf.sqrt(tf.reduce_sum(tf.square(forcePred)))
 print("Relative Error in the forces is " +str(err.numpy()))

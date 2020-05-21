@@ -1489,7 +1489,6 @@ class NUFFTLayerMultiChannelInit(tf.keras.layers.Layer):
 
     multFFT = tf.concat([multfft, multfft2], axis = 1)
 
-
     multfftDeconv = tf.multiply(multFFT, tf.expand_dims(Deconv,1))
 
     print(multfft.shape)
@@ -1883,6 +1882,36 @@ def computInterList( Rinnumpy, L,  radious, maxNumNeighs):
 
 # converting the list of points to an numpy array.
   Idx = np.array(Idex)
+
+  return Idx
+
+@jit(nopython=True)
+def computInterListOpt(Rinnumpy, L,  radious, maxNumNeighs):
+  Nsamples, Npoints = Rinnumpy.shape
+
+  # computing the distance
+  DistNumpy = np.abs(Rinnumpy.reshape(Nsamples,Npoints,1) \
+              - Rinnumpy.reshape(Nsamples,1,Npoints))
+
+  # periodicing the distance
+  out = np.zeros_like(DistNumpy)
+  np.round(DistNumpy/L, 0, out)
+  DistNumpy = DistNumpy - L*out
+
+  # add the padding and loop over the indices 
+  Idx = np.zeros((Nsamples, Npoints, maxNumNeighs), dtype=np.int32) -1 
+  for ii in range(0,Nsamples):
+    for jj in range(0, Npoints):
+      ll = 0 
+      for kk in range(0, Npoints):
+        if jj!= kk and np.abs(DistNumpy[ii,jj,kk]) < radious:
+          # checking that we are not going over the max number of
+          # neighboors, if so we break the loop
+          if ll >= maxNumNeighs:
+            print("Number of neighboors is larger than the max number allowed")
+            break
+          Idx[ii,jj,ll] = kk
+          ll += 1 
 
   return Idx
 
