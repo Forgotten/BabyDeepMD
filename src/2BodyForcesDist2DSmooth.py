@@ -269,10 +269,13 @@ class DeepMDsimpleEnergy(tf.keras.Model):
 
     return Energy, Forces
 
+avTF = tf.constant(av, dtype=tf.float32)
+stdTF = tf.constant(std, dtype=tf.float32)
+
 ## Defining the model
 model = DeepMDsimpleEnergy(Npoints, L, radious, smoothRadious, 
                            maxNumNeighs, filterNet, fittingNet, 
-                           av, std)
+                           avTF, stdTF)
 
 # quick run of the model to check that it is correct.
 # we use a small set 
