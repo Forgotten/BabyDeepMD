@@ -134,7 +134,7 @@ forcesArray /= forcesStd
 
 
 # positions of the 
-Rinput = tf.Variable(pointsArray, name="input", dtype = tf.float32)
+Rinput = tf.Variable(pointsArray, dtype = tf.float32)
 
 # we only consider the first 100 
 Rin = Rinput[:8,:]
