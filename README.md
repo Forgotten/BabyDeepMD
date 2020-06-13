@@ -9,6 +9,10 @@ run/ : it contains the examples encoded in a Json file
 you will need to create another folder data/ where all the data will be stored, i.e., you need to type
 mkdir data
 
+The codes are built so they require a json file for execution. 
+Several examples are provided in the the run/ folder. In addition, I added a few bash files to be used 
+with slurm 
+
 
 For starters you can run a simple 1D example by 
 cd run/Np20_Per
@@ -20,6 +24,6 @@ the network.
 
 For an optimized version of the same example you can type 
 python ../../src/2BodyForcesDistArray.py Np20_Per_mu_10.json
+(there is a bug in TF 2.0 that does not allow this code to run properly, be sure to have TF 2.1 installed)
 
 This code uses a TensorArray to concatenate the results, thus helping tensorflow with the tracing and optimization. 
- 
