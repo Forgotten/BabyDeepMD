@@ -1759,6 +1759,7 @@ def genDistInvPerNlist(Rin, Npoints, neighList, L, av = [0.0, 0.0], std = [1.0, 
 
             absDistArrayPoint.append(bnormFilt)
             absInvArrayPoint.append(binvFilt)
+
         Abs_Array.append(tf.expand_dims(
                          tf.concat(absDistArrayPoint, axis = 1), 1))
         Abs_Inv_Array.append(tf.expand_dims(
@@ -1774,6 +1775,100 @@ def genDistInvPerNlist(Rin, Npoints, neighList, L, av = [0.0, 0.0], std = [1.0, 
     return R_Diff_total
 
 
+
+@tf.function
+def genDistInvPerNlistArray(Rin, Npoints, neighList, L, 
+                            av = tf.constant([0.0, 0.0], dtype = tf.float32),
+                            std =  tf.constant([1.0, 1.0], dtype = tf.float32)):
+    # This function follows the same trick 
+    # function to generate the generalized coordinates for periodic data
+    # the input has dimensions (Nsamples, Ncells*Np)
+    # the ouput has dimensions (Nsamples*Ncells*Np*(3*Np-1), 2)
+    # we try to allocate an array before hand
+
+    # neighList is a (Nsample, Npoints, maxNeigh)
+
+    # add assert with respect to the input shape 
+    Nsamples = Rin.shape[0]
+    maxNumNeighs = neighList.shape[-1]
+
+    Idx1 = tf.constant(np.linspace(0,Nsamples-1, Nsamples).astype(np.int64).reshape((-1,1)))
+
+    R_Diff_total = tf.TensorArray(tf.float32, size=Npoints, 
+                                  element_shape=tf.TensorShape([maxNumNeighs, Nsamples, 2]), 
+                                  clear_after_read=True)
+
+    for r in range(Npoints):
+        # absInvArrayPoint =[]
+        R_Diff_local = tf.TensorArray(tf.float32, size=maxNumNeighs, 
+                                      element_shape=tf.TensorShape([Nsamples, 2]), clear_after_read=True)
+
+        for j in range(maxNumNeighs) :
+            # we consider the indices and the concatenat with the other set
+            # in order to have a matrix having the coordinates in Rin
+            idx_x = tf.concat([Idx1, tf.reshape(neighList[:,r,j],(-1,1))], axis = 1) 
+            # we create a filter for the unwanted data points 
+            filter = tf.cast(idx_x > -1, tf.float32)
+
+            idx_x = tf.cast(filter, tf.int64)*idx_x
+            #(Nsamples, 1, 2)
+            # we substract
+
+            safe_x  = tf.where(filter[:,1]>0, tf.gather_nd(Rin, idx_x), tf.zeros_like(filter[:,1]))
+            safeRx  = tf.where(filter[:,1]>0, Rin[:,r], tf.zeros_like(filter[:,1]))
+
+            # substructing the values |x_I - x_J|
+            ax = tf.subtract(safeRx, safe_x) 
+
+            # applying the periodicity
+            bx = ax - L*tf.round(ax/L)
+            # (Nsamples, 1)
+
+            # we apply the % TODO check when is the best place for the normalization
+            bnorm = tf.math.sqrt(tf.square(bx))
+            # (Nsamples, 1)
+
+            # using a safe norm, i.e. we replace the zeros by ones
+            bnorm_safe = tf.where(filter[:,1]>0, bnorm, tf.ones_like(filter[:,1]))
+            # computing the inverse
+            binv = tf.math.reciprocal(bnorm_safe)
+
+
+            # normalizing the inverse, and adding making the proper zeros
+            binv_safe =  tf.where(filter[:,1]>0, (binv-av[0])/std[0], 
+                                                  tf.zeros_like(filter[:,1]))
+
+            # normalizing the norm and making the proper entries of the 
+            # output equal to zero
+            bnorm_final = tf.where(filter[:,1]>0, (bnorm-av[1])/std[1], 
+                                                  tf.zeros_like(filter[:,1]))
+
+            # stacking the data
+            data_final = tf.stack([binv_safe, bnorm_final], axis = 1)
+            # (Nsamples, 2)
+            # tf.print(binv_safe.shape)
+
+            R_Diff_local = R_Diff_local.write(j, data_final)
+            # (?, Nsamples, 2)
+
+        # stacking locally 
+        temp = R_Diff_local.stack()
+        # (numMaxNeighs, Nsamples, 2)
+
+        #tf.print(temp.shape)
+        R_Diff_total = R_Diff_total.write(r, temp)
+        # (?, numMaxNeighs, Nsamples, 2)
+
+    R_diff = R_Diff_total.stack()
+    # (Npoints, numMaxNeighs, Nsamples, 2)
+
+    # we need to properly reshape it
+    R_diff = tf.transpose(R_diff, perm=[2, 0, 1, 3])
+    R_diff = tf.reshape(R_diff, (-1, 2))
+
+    return R_diff
+
+# This one doesn't work it the optimization step refuses to run
 @tf.function
 def genDistInvPerNlistLoop(Rin, Npoints, neighList, L, av = [0.0, 0.0], std = [1.0, 1.0]):
     # function to generate the generalized coordinates for periodic data
@@ -1845,6 +1940,7 @@ def genDistInvPerNlistLoop(Rin, Npoints, neighList, L, av = [0.0, 0.0], std = [1
     # assert R_Diff_total.shape[0] == Nsamples*Ncells*Np*(3*Np-1)
 
     return R_Diff_total
+
 
 def computInterList( Rinnumpy, L,  radious, maxNumNeighs):
   Nsamples, Npoints = Rinnumpy.shape
@@ -2110,12 +2206,14 @@ def genDistInvPerNlist2DRadialArray(Rin, Npoints, neighList, L, av = [0.0, 0.0],
     IdxDimx= tf.constant(np.zeros((Nsamples,1)).astype(np.int64).reshape((-1,1)))
     IdxDimy= tf.constant(np.ones((Nsamples,1)).astype(np.int64).reshape((-1,1)))
 
-    R_Diff_total = tf.TensorArray(tf.float32, size=0, dynamic_size=True, clear_after_read=False)
-
+    R_Diff_total = tf.TensorArray(tf.float32, size=Npoints, 
+                                  element_shape=tf.TensorShape([maxNumNeighs, Nsamples]), 
+                                  clear_after_read=True)
 
     for r in range(Npoints):
         # absInvArrayPoint =[]
-        R_Diff_local = tf.TensorArray(tf.float32, size=0, dynamic_size=True, clear_after_read=False)
+        R_Diff_local = tf.TensorArray(tf.float32, size=maxNumNeighs, 
+                                      element_shape=tf.TensorShape([Nsamples]), clear_after_read=True)
 
         for j in range(maxNumNeighs) :
             # we consider the indices and the concatenat with the other set
@@ -2156,12 +2254,15 @@ def genDistInvPerNlist2DRadialArray(Rin, Npoints, neighList, L, av = [0.0, 0.0],
             binv_safe =  tf.where(filter[:,1]>0, (binv-av[0])/std[0], 
                                                   tf.zeros_like(filter[:,1]))
 
+            #tf.print(binv_safe.shape)
+
             R_Diff_local = R_Diff_local.write(j, binv_safe)
         # (Nsamples, 1, numMaxNeighs, 1)
 
         # stacking locally 
         temp = R_Diff_local.stack()
 
+        #tf.print(temp.shape)
         R_Diff_total = R_Diff_total.write(r, temp)
 
     R_diff = R_Diff_total.stack()
@@ -2171,6 +2272,7 @@ def genDistInvPerNlist2DRadialArray(Rin, Npoints, neighList, L, av = [0.0, 0.0],
     R_diff = tf.reshape(R_diff, (-1, 1))
 
     return R_diff
+
 
 
 @tf.function
