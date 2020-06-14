@@ -1710,7 +1710,7 @@ def gaussianDeconv(k, tau):
 
 # neigh List has a fixed lenght
 
-@tf.function
+# @tf.function
 def genDistInvPerNlist(Rin, Npoints, neighList, L, av = [0.0, 0.0], std = [1.0, 1.0]):
     # function to generate the generalized coordinates for periodic data
     # the input has dimensions (Nsamples, Ncells*Np)
@@ -1776,7 +1776,7 @@ def genDistInvPerNlist(Rin, Npoints, neighList, L, av = [0.0, 0.0], std = [1.0, 
 
 
 
-@tf.function
+# @tf.function
 def genDistInvPerNlistArray(Rin, Npoints, neighList, L, 
                             av = tf.constant([0.0, 0.0], dtype = tf.float32),
                             std =  tf.constant([1.0, 1.0], dtype = tf.float32)):
