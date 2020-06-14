@@ -6,6 +6,7 @@
 # This version supports an inhomogeneous number of particules, however we need to 
 # provide a neighboor list. 
 
+import time
 import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
@@ -155,8 +156,11 @@ Idx = computInterListOpt(Rinnumpy, L,  radious, maxNumNeighs)
 neighList = tf.Variable(Idx)
 Npoints = Np*Ncells
 
+# converting them to tf constant to make the computation faster
+LTF = tf.constant(L, dtype=tf.float32)
+NpointsTF = tf.constant(Npoints, dtype=tf.int32)
 
-genCoordinates = genDistInvPerNlistArray(Rin, Npoints, neighList, L)
+genCoordinates = genDistInvPerNlistArray(Rin, NpointsTF, neighList, LTF)
 filter = tf.cast(tf.abs(genCoordinates)>0, tf.int32)
 numNonZero =  tf.reduce_sum(filter, axis = 0).numpy()[0]
 numTotal = genCoordinates.shape[0]  
@@ -303,6 +307,7 @@ loss_metric = tf.keras.metrics.Mean()
 
 for cycle, (epochs, batchSizeL) in enumerate(zip(Nepochs, batchSizeArray)):
 
+  
   print('++++++++++++++++++++++++++++++', flush = True) 
   print('Start of cycle %d' % (cycle,))
   print('Total number of epochs in this cycle: %d'%(epochs,))
@@ -319,6 +324,7 @@ for cycle, (epochs, batchSizeL) in enumerate(zip(Nepochs, batchSizeArray)):
 
   # Iterate over epochs.
   for epoch in range(epochs):
+    start = time.time()
     print('============================', flush = True) 
     print('Start of epoch %d' % (epoch,))
   
@@ -348,6 +354,9 @@ for cycle, (epochs, batchSizeL) in enumerate(zip(Nepochs, batchSizeArray)):
     print('epoch %s: mean loss = %s  learning rate = %s'%(epoch,
                                                           meanLossStr,
                                                           lrStr))
+
+    end = time.time()
+    print('time elapsed %.4f'%(end - start))
 
   print("saving the weights")
   model.save_weights(checkFile+"_cycle_"+str(cycle)+".h5")
