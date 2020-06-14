@@ -1710,7 +1710,7 @@ def gaussianDeconv(k, tau):
 
 # neigh List has a fixed lenght
 
-@tf.function
+# @tf.function
 def genDistInvPerNlist(Rin, Npoints, neighList, L, av = [0.0, 0.0], std = [1.0, 1.0]):
     # function to generate the generalized coordinates for periodic data
     # the input has dimensions (Nsamples, Ncells*Np)
@@ -1730,10 +1730,10 @@ def genDistInvPerNlist(Rin, Npoints, neighList, L, av = [0.0, 0.0], std = [1.0, 
 
     Idx1 = tf.constant(np.linspace(0,Nsamples-1, Nsamples).astype(np.int64).reshape((-1,1)))
 
-    for r in range(Npoints):
+    for r in tf.range(Npoints):
         absDistArrayPoint = []
         absInvArrayPoint =[]
-        for j in range(maxNumNeighs) :
+        for j in tf.range(maxNumNeighs) :
             # we consider the indices and the concatenat with the other set
             # in order to have a matrix having the coordinates in Rin
             Idx = tf.concat([Idx1, tf.reshape(neighList[:,r,j],(-1,1))], axis = 1) 
@@ -1776,7 +1776,7 @@ def genDistInvPerNlist(Rin, Npoints, neighList, L, av = [0.0, 0.0], std = [1.0, 
 
 
 
-@tf.function
+# @tf.function
 def genDistInvPerNlistArray(Rin, Npoints, neighList, L, 
                             av = tf.constant([0.0, 0.0], dtype = tf.float32),
                             std =  tf.constant([1.0, 1.0], dtype = tf.float32)):
@@ -1798,12 +1798,12 @@ def genDistInvPerNlistArray(Rin, Npoints, neighList, L,
                                   element_shape=tf.TensorShape([maxNumNeighs, Nsamples, 2]), 
                                   clear_after_read=True)
 
-    for r in range(Npoints):
+    for r in tf.range(Npoints):
         # absInvArrayPoint =[]
         R_Diff_local = tf.TensorArray(tf.float32, size=maxNumNeighs, 
                                       element_shape=tf.TensorShape([Nsamples, 2]), clear_after_read=True)
 
-        for j in range(maxNumNeighs) :
+        for j in tf.range(maxNumNeighs) :
             # we consider the indices and the concatenat with the other set
             # in order to have a matrix having the coordinates in Rin
             idx_x = tf.concat([Idx1, tf.reshape(neighList[:,r,j],(-1,1))], axis = 1) 
