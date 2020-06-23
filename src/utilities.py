@@ -1775,9 +1775,8 @@ def genDistInvPerNlist(Rin, Npoints, neighList, L, av = [0.0, 0.0], std = [1.0, 
     return R_Diff_total
 
 
-
 # @tf.function
-def genDistInvPerNlistArray(Rin, Npoints, neighList, L, 
+def genDistInvPerNlistArray(Rin, neighList, L, 
                             av = tf.constant([0.0, 0.0], dtype = tf.float32),
                             std =  tf.constant([1.0, 1.0], dtype = tf.float32)):
     # This function follows the same trick 
@@ -1798,12 +1797,12 @@ def genDistInvPerNlistArray(Rin, Npoints, neighList, L,
                                   element_shape=tf.TensorShape([maxNumNeighs, Nsamples, 2]), 
                                   clear_after_read=True)
 
-    for r in tf.range(Npoints):
+    for r in range(Npoints):
         # absInvArrayPoint =[]
         R_Diff_local = tf.TensorArray(tf.float32, size=maxNumNeighs, 
                                       element_shape=tf.TensorShape([Nsamples, 2]), clear_after_read=True)
 
-        for j in tf.range(maxNumNeighs) :
+        for j in range(maxNumNeighs) :
             # we consider the indices and the concatenat with the other set
             # in order to have a matrix having the coordinates in Rin
             idx_x = tf.concat([Idx1, tf.reshape(neighList[:,r,j],(-1,1))], axis = 1) 
@@ -1867,6 +1866,47 @@ def genDistInvPerNlistArray(Rin, Npoints, neighList, L,
     R_diff = tf.reshape(R_diff, (-1, 2))
 
     return R_diff
+
+
+@tf.function
+def genDistInvPerNlistVec(Rin, neighList, L, 
+                          av = tf.constant([0.0, 0.0], dtype = tf.float32),
+                          std =  tf.constant([1.0, 1.0], dtype = tf.float32)):
+    # This function follows the same trick 
+    # function to generate the generalized coordinates for periodic data
+    # the input has dimensions (Nsamples, Ncells*Np)
+    # the ouput has dimensions (Nsamples*Ncells*Np*(3*Np-1), 2)
+    # we try to allocate an array before hand and use high level
+    # tensorflow operations
+
+    # neighList is a (Nsample, Npoints, maxNeigh)
+
+    # add assert with respect to the input shape 
+    Nsamples = Rin.shape[0]
+    maxNumNeighs = neighList.shape[-1]
+
+    mask = neighList > -1
+
+    RinRep  = tf.tile(tf.expand_dims(Rin, -1),[1 ,1,maxNumNeighs] )
+    RinGather = tf.gather(Rin, neighList, batch_dims = 1, axis = 1)
+
+    # substracting 
+    R_Diff = RinGather - RinRep
+
+    R_Diff = R_Diff - L*tf.round(R_Diff/L)
+
+    bnorm = (tf.abs(R_Diff) - av[1])/std[1]
+    binv = (tf.math.reciprocal(tf.abs(R_Diff)) - av[0])/std[0], 
+
+    zeroDummy = tf.zeros_like(bnorm)
+
+    bnorm_safe = tf.where(mask, bnorm, zeroDummy)
+    binv_safe = tf.where(mask, binv, zeroDummy)
+    
+    R_total = tf.concat([tf.reshape(binv_safe, (-1,1)), 
+                              tf.reshape(bnorm_safe, (-1,1))], axis = 1)
+
+    return R_total
 
 # This one doesn't work it the optimization step refuses to run
 @tf.function

@@ -17,7 +17,7 @@ import sys
 import json
 
 from data_gen_1d import genDataYukawaPer
-from utilities import genDistInvPerNlistArray, trainStepList, computInterListOpt
+from utilities import genDistInvPerNlistVec, trainStepList, computInterListOpt
 from utilities import MyDenseLayer, pyramidLayer, pyramidLayerNoBias
 
 import os
@@ -160,7 +160,7 @@ Npoints = Np*Ncells
 LTF = tf.constant(L, dtype=tf.float32)
 NpointsTF = tf.constant(Npoints, dtype=tf.int32)
 
-genCoordinates = genDistInvPerNlistArray(Rin, NpointsTF, neighList, LTF)
+genCoordinates = genDistInvPerNlistVec(Rin, neighList, LTF)
 filter = tf.cast(tf.abs(genCoordinates)>0, tf.int32)
 numNonZero =  tf.reduce_sum(filter, axis = 0).numpy()[0]
 numTotal = genCoordinates.shape[0]  
@@ -226,7 +226,7 @@ class DeepMDsimpleEnergy(tf.keras.Model):
       tape.watch(inputs)
       # (Nsamples, Npoints)
       # in this case we are only considering the distances
-      genCoordinates = genDistInvPerNlistArray(inputs, self.Npoints, 
+      genCoordinates = genDistInvPerNlistVec(inputs, 
                                           neighList, L, 
                                           self.av, self.std) # this need to be fixed
       # (Nsamples*Npoints*maxNumNeighs, 2)
@@ -274,7 +274,7 @@ else:
 
 ## in the case we need to load an older saved model
 if loadFile: 
-  print("Loading the weights the model contained in %s"(loadFile), flush = True)
+  print("Loading the weights the model contained in %s"%(loadFile), flush = True)
   model.load_weights(loadFile)
 
 ## We use a decent training or a custom one if necessary
