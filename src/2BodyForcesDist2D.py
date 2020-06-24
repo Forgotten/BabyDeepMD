@@ -16,7 +16,7 @@ import sys
 import json
 
 from data_gen_2d import genDataPer2D
-from utilities import genDistInvPerNlist2Dwherev2, trainStepList, computInterList2DOpt
+from utilities import genDistInvPerNlistVec2D, trainStepList, computInterList2DOpt
 from utilities import MyDenseLayer, pyramidLayer, pyramidLayerNoBias
 
 import os
@@ -155,7 +155,7 @@ neighList = tf.Variable(Idx)
 Npoints = Np*Ncells**2
 
 
-genCoordinates = genDistInvPerNlist2Dwherev2(Rin, Npoints, neighList, L)
+genCoordinates = genDistInvPerNlistVec2D(Rin, neighList, L)
 filter = tf.cast(tf.reduce_sum(tf.abs(genCoordinates), axis = -1)>0, tf.int32)
 numNonZero =  tf.reduce_sum(filter, axis = 0).numpy()
 numTotal = genCoordinates.shape[0]  
@@ -224,10 +224,10 @@ class DeepMDsimpleEnergy(tf.keras.Model):
       tape.watch(inputs)
       # (Nsamples, Npoints)
       # in this case we are only considering the distances
-      genCoordinates = genDistInvPerNlist2Dwherev2(inputs, self.Npoints, 
+      genCoordinates = genDistInvPerNlistVec2D(inputs, 
                                           neighList, self.L, 
                                           self.av, self.std) # this need to be fixed
-      # (Nsamples*Npoints*maxNumNeighs, 2)
+      # (Nsamples*Npoints*maxNumNeighs, 3)
 
       # the L1 and L2 functions only depends on the first entry
       L1   = self.layerPyramid(genCoordinates[:,:1])
@@ -435,7 +435,7 @@ print("Relative Error in the forces is " +str(err.numpy()))
 #   tape.watch(inputs)
 #   # (Nsamples, Npoints)
 #   # in this case we are only considering the distances
-#   genCoordinates = genDistInvPerNlist2Dwherev2(inputs, model.Npoints, 
+#   genCoordinates = genDistInvPerNlistVec2D(inputs, model.Npoints, 
 #                                       neighList, model.L, 
 #                                       model.av, model.std) # this need to be fixed
 #   # (Nsamples*Npoints*maxNumNeighs, 2)

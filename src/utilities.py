@@ -1908,6 +1908,64 @@ def genDistInvPerNlistVec(Rin, neighList, L,
 
     return R_total
 
+
+@tf.function
+def genDistInvPerNlistVec2D(Rin, neighList, L, 
+                            av = tf.constant([0.0, 0.0], dtype = tf.float32),
+                            std =  tf.constant([1.0, 1.0], dtype = tf.float32)):
+    # This function follows the same trick 
+    # function to generate the generalized coordinates for periodic data
+    # the input has dimensions (Nsamples, Ncells*Np)
+    # the ouput has dimensions (Nsamples*Ncells*Np*(3*Np-1), 2)
+    # we try to allocate an array before hand and use high level
+    # tensorflow operations
+
+    # neighList is a (Nsample, Npoints, maxNeigh)
+
+    # add assert with respect to the input shape 
+    Nsamples = Rin.shape[0]
+    maxNumNeighs = neighList.shape[-1]
+
+    mask = neighList > -1
+
+    # we try per dimension first
+    RinRepX  = tf.tile(tf.expand_dims(Rin[:,:,0], -1),[1 ,1, maxNumNeighs] )
+    RinGatherX = tf.gather(Rin[:,:,0], neighList, batch_dims = 1, axis = 1)
+
+    RinRepY  = tf.tile(tf.expand_dims(Rin[:,:,1], -1),[1 ,1, maxNumNeighs] )
+    RinGatherY = tf.gather(Rin[:,:,1], neighList, batch_dims = 1, axis = 1)
+
+    # substracting  in X
+    R_DiffX = RinGatherX - RinRepX
+    R_DiffX = R_DiffX - L*tf.round(R_DiffX/L)
+
+    # substracting in Y 
+    R_DiffY = RinGatherY - RinRepY
+    R_DiffY = R_DiffY - L*tf.round(R_DiffY/L)
+
+    # computing the norm 
+    norm = tf.sqrt(tf.square(R_DiffX) + tf.square(R_DiffY))
+    # computing the normalized norm
+    bnorm = (tf.abs(norm) - av[0])/std[0]
+    
+    binv = tf.math.reciprocal(norm) 
+
+    bx = tf.math.multiply(R_DiffX,binv)
+    by = tf.math.multiply(R_DiffY,binv)
+
+    zeroDummy = tf.zeros_like(bnorm)
+
+    binv_safe = tf.where(mask, binv, zeroDummy)
+    bx_safe = tf.where(mask, bx, zeroDummy)
+    by_safe = tf.where(mask, by, zeroDummy)
+    
+    R_total = tf.concat([tf.reshape(binv_safe, (-1,1)), 
+                         tf.reshape(bx_safe,    (-1,1)), 
+                         tf.reshape(by_safe,    (-1,1)) ], axis = 1)
+
+    return R_total
+
+
 # This one doesn't work it the optimization step refuses to run
 @tf.function
 def genDistInvPerNlistLoop(Rin, Npoints, neighList, L, av = [0.0, 0.0], std = [1.0, 1.0]):
@@ -2056,7 +2114,7 @@ def genDistInvPerNlist2Dwherev2(Rin, Npoints, neighList, L, av = [0.0, 0.0], std
     # the input has dimensions (Nsamples, Ncells*Np)
     # the ouput has dimensions (Nsamples*Ncells*Np*(3*Np-1), 2)
 
-    # neighList is a (Nsample, Npoints, maxNeigh)
+    # neighList is a (Nsample, Npoints, maxNeigh, 2)
 
     # add assert with respect to the input shape 
     Nsamples = Rin.shape[0]
@@ -2089,8 +2147,8 @@ def genDistInvPerNlist2Dwherev2(Rin, Npoints, neighList, L, av = [0.0, 0.0], std
             safe_y  = tf.where(filter[:,1]>0, tf.gather_nd(Rin, idx_y), tf.zeros_like(filter[:,1]))
             safeRy  = tf.where(filter[:,1]>0, Rin[:,r,1], tf.zeros_like(filter[:,1]))
 
-            ax = tf.subtract(safeRx, safe_x) 
-            ay = tf.subtract(safeRy, safe_y) 
+            ax = tf.subtract(safe_x, safeRx) 
+            ay = tf.subtract(safe_y, safeRy) 
 
             # applying the periodicity
             bx = ax - L*tf.round(ax/L)
