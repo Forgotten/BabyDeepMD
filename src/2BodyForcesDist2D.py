@@ -155,10 +155,10 @@ neighList = tf.Variable(Idx)
 Npoints = Np*Ncells**2
 
 
-genCoordinates = genDistInvPerNlistVec2D(Rin, neighList, L)
-filter = tf.cast(tf.reduce_sum(tf.abs(genCoordinates), axis = -1)>0, tf.int32)
+gen_coordinates = genDistInvPerNlistVec2D(Rin, neighList, L)
+filter = tf.cast(tf.reduce_sum(tf.abs(gen_coordinates), axis = -1)>0, tf.int32)
 numNonZero =  tf.reduce_sum(filter, axis = 0).numpy()
-numTotal = genCoordinates.shape[0]  
+numTotal = gen_coordinates.shape[0]  
 
 if loadFile: 
   # if we are loadin a file we need to be sure that we are 
@@ -167,12 +167,14 @@ if loadFile:
   std = data["std"]
   print("loading the saved mean and std of the generilized coordinates")
 else:
-  av = tf.reduce_sum(genCoordinates, 
+  av = tf.reduce_sum(gen_coordinates, 
                     axis = 0, 
                     keepdims =True).numpy()[0]/numNonZero
-  std = np.sqrt((tf.reduce_sum(tf.square(genCoordinates - av), 
-                             axis = 0, 
-                             keepdims=True).numpy()[0] - av**2*(numTotal-numNonZero)) /numNonZero)
+
+  std = np.sqrt((tf.reduce_sum(tf.square(gen_coordinates - av), 
+                               axis = 0, 
+                               keepdims=True).numpy()[0] 
+                - av**2*(numTotal-numNonZero)) /numNonZero)
 
 print("mean of the inputs are %.8f and %.8f"%(av[0], av[1]))
 print("std of the inputs are %.8f and %.8f"%(std[0], std[1]))
@@ -224,33 +226,35 @@ class DeepMDsimpleEnergy(tf.keras.Model):
       tape.watch(inputs)
       # (Nsamples, Npoints)
       # in this case we are only considering the distances
-      genCoordinates = genDistInvPerNlistVec2D(inputs, 
+      gen_coordinates = genDistInvPerNlistVec2D(inputs, 
                                           neighList, self.L, 
                                           self.av, self.std) # this need to be fixed
       # (Nsamples*Npoints*maxNumNeighs, 3)
 
       # the L1 and L2 functions only depends on the first entry
-      L1   = self.layerPyramid(genCoordinates[:,:1])
+      L1   = self.layerPyramid(gen_coordinates[:,:1])
       # (Nsamples*Npoints*maxNumNeighs, descriptorDim)
-      L2   = self.layerPyramidInv(genCoordinates[:,:1])
+      L2   = self.layerPyramidInv(gen_coordinates[:,:1])
       # (Nsamples*Npoints*maxNumNeighs, descriptorDim)
         
       # here we need to assemble the Baby Deep MD descriptor
-      genCoord = tf.reshape(genCoordinates, (-1, self.maxNumNeighs, 3))
+      genCoord = tf.reshape(gen_coordinates, (-1, self.maxNumNeighs, 3))
       # (Nsamples*Npoints, maxNumNeighs, 3)
-      L1_reshape = tf.reshape(L1, (-1, self.maxNumNeighs, self.descriptorDim))
+      L1_reshape = tf.reshape(L1, (-1, self.maxNumNeighs, 
+                                       self.descriptorDim))
       # (Nsamples*Npoints, maxNumNeighs, descriptorDim)
 
-      L2_reshape = tf.reshape(L2, (-1, self.maxNumNeighs, self.descriptorDim))
+      L2_reshape = tf.reshape(L2, (-1, self.maxNumNeighs, 
+                                       self.descriptorDim))
       # (Nsamples*Npoints, maxNumNeighs, descriptorDim)
 
-      Omega1 = tf.matmul(genCoord, L1_reshape, transpose_a = True)
+      omega1 = tf.matmul(genCoord, L1_reshape, transpose_a = True)
       # (Nsamples*Npoints, 3, descriptorDim)
 
-      Omega2 =  tf.matmul(genCoord, L2_reshape, transpose_a = True)
+      omega2 =  tf.matmul(genCoord, L2_reshape, transpose_a = True)
       # (Nsamples*Npoints, 3, descriptorDim)
 
-      D = tf.matmul(Omega1, Omega2, transpose_a = True)
+      D = tf.matmul(omega1, omega2, transpose_a = True)
       # (Nsamples*Npoints, descriptorDim, descriptorDim)
 
       D1 = tf.reshape(D, (-1, model.descriptorDim**2))
@@ -260,16 +264,19 @@ class DeepMDsimpleEnergy(tf.keras.Model):
       F = self.linfitNet(F2)
 
       Energy = tf.reduce_sum(tf.reshape(F, (-1, self.Npoints)),
-                              keepdims = True, axis = 1)
+                             keepdims = True, axis = 1)
 
     Forces = -tape.gradient(Energy, inputs)
 
     return Energy, Forces
 
+avTF = tf.constant(av, dtype=tf.float32)
+stdTF = tf.constant(std, dtype=tf.float32)
+
 ## Defining the model
 model = DeepMDsimpleEnergy(Npoints, L, maxNumNeighs,
                            filterNet, fittingNet, 
-                            av, std)
+                            avTF, stdTF)
 
 # quick run of the model to check that it is correct.
 # we use a small set 
@@ -306,13 +313,13 @@ print(batchSizeArray)
 mse_loss_fn = tf.keras.losses.MeanSquaredError()
 
 initialLearningRate = learningRate
-lrSchedule = tf.keras.optimizers.schedules.ExponentialDecay(
+lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
              initialLearningRate,
              decay_steps=(Nsamples//batchSizeArray[0])*epochsPerStair,
              decay_rate=decayRate,
              staircase=True)
 
-optimizer = tf.keras.optimizers.Adam(learning_rate=lrSchedule)
+optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
 
 loss_metric = tf.keras.metrics.Mean()
 
@@ -435,19 +442,19 @@ print("Relative Error in the forces is " +str(err.numpy()))
 #   tape.watch(inputs)
 #   # (Nsamples, Npoints)
 #   # in this case we are only considering the distances
-#   genCoordinates = genDistInvPerNlistVec2D(inputs, model.Npoints, 
+#   gen_coordinates = genDistInvPerNlistVec2D(inputs, model.Npoints, 
 #                                       neighList, model.L, 
 #                                       model.av, model.std) # this need to be fixed
 #   # (Nsamples*Npoints*maxNumNeighs, 2)
   
 #   # the L1 and L2 functions only depends on the first entry
-#   L1   = model.layerPyramid(genCoordinates[:,:1])*genCoordinates[:,:1]
+#   L1   = model.layerPyramid(gen_coordinates[:,:1])*gen_coordinates[:,:1]
 #   # (Nsamples*Npoints*maxNumNeighs, descriptorDim)
-#   L2   = model.layerPyramidInv(genCoordinates[:,:1])*genCoordinates[:,:1]
+#   L2   = model.layerPyramidInv(gen_coordinates[:,:1])*gen_coordinates[:,:1]
 #   # (Nsamples*Npoints*maxNumNeighs, descriptorDim)
     
 #   # here we need to assemble the Baby Deep MD descriptor
-#   genCoord = tf.reshape(genCoordinates, (-1, model.maxNumNeighs, 3))
+#   genCoord = tf.reshape(gen_coordinates, (-1, model.maxNumNeighs, 3))
 #   # (Nsamples*Npoints, maxNumNeighs, 3)
 #   L1_reshape = tf.reshape(L1, (-1, model.maxNumNeighs, model.descriptorDim))
 #   # (Nsamples*Npoints, maxNumNeighs, descriptorDim)
@@ -457,11 +464,11 @@ print("Relative Error in the forces is " +str(err.numpy()))
 #   # (Nsamples*Npoints, maxNumNeighs, descriptorDim)
 #   L2_omega = tf.transpose(L2_reshape, perm=(0,2,1))
 #   # (Nsamples*Npoints, descriptorDim, maxNumNeighs)
-#   Omega1 = tf.matmul(L1_omega, genCoord)
+#   omega1 = tf.matmul(L1_omega, genCoord)
 #   # (Nsamples*Npoints, descriptorDim, 3)
-#   Omega2 = tf.matmul(L2_omega, genCoord)
+#   omega2 = tf.matmul(L2_omega, genCoord)
 #   # (Nsamples*Npoints, descriptorDim, 3)
-#   D = tf.matmul(Omega1, Omega2, transpose_b = True)
+#   D = tf.matmul(omega1, omega2, transpose_b = True)
 #   D1 = tf.reshape(D, (-1, model.descriptorDim**2))
 #   F2 = model.fittingNetwork(D1)
 #   F = model.linfitNet(F2)
