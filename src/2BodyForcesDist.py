@@ -232,8 +232,9 @@ class DeepMDsimpleEnergy(tf.keras.Model):
       # (Nsamples*Npoints*maxNumNeighs, descriptorDim)
       LL = tf.concat([L1, L2], axis = 1)
       # (Nsamples*Npoints*maxNumNeighs, 2*descriptorDim)
-      Dtemp = tf.reshape(LL, (-1, self.maxNumNeighs, 
-                              2*self.descriptorDim ))
+      Dtemp = tf.reshape(LL, (-1, 
+                               self.maxNumNeighs, 
+                               2*self.descriptorDim ))
       # (Nsamples*Npoints, maxNumNeighs, descriptorDim)
       D = tf.reduce_sum(Dtemp, axis = 1)
       # (Nsamples*Npoints, descriptorDim)

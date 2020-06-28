@@ -5,7 +5,9 @@ The code is written in python 3.6 and Tensorflow 2.x (so far 2.1 seems to be the
 folder structure: 
 
 -```src/``` : contains the source files
+
 -```run/``` : it contains the examples encoded in a Json file
+
 -```experimental/``` : it contains experimental features being explored
 
 you will need to create another folder data/ where all the data will be stored, i.e., you need to type
