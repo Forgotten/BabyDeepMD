@@ -13,7 +13,7 @@ import sys
 import json
 
 from data_gen_2d import genDataPer2D
-from utilities import genDistInvPerNlist2DSmooth, trainStepList, computInterList2DOpt
+from utilities import genDistInvPerNlistVec2DSmooth, trainStepList, computInterList2DOpt
 from utilities import MyDenseLayer, pyramidLayer, pyramidLayerNoBias
 
 import os
@@ -154,7 +154,7 @@ neighList = tf.Variable(Idx)
 Npoints = Np*Ncells**2
 
 
-genCoordinates = genDistInvPerNlist2DSmooth(Rin, Npoints, 
+genCoordinates = genDistInvPerNlistVec2DSmooth(Rin, Npoints, 
                                             neighList,radious, 
                                             smoothRadious,  L)
 filter = tf.cast(tf.reduce_sum(tf.abs(genCoordinates), axis = -1)>0, tf.int32)
@@ -227,7 +227,7 @@ class DeepMDsimpleEnergy(tf.keras.Model):
       tape.watch(inputs)
       # (Nsamples, Npoints)
       # in this case we are only considering the distances
-      genCoordinates = genDistInvPerNlist2DSmooth(inputs, self.Npoints, 
+      genCoordinates = genDistInvPerNlistVec2DSmooth(inputs, 
                                                   neighList, self.rC, 
                                                   self.rSc, self.L, 
                                                   self.av, self.std) # this need to be fixed
@@ -269,13 +269,16 @@ class DeepMDsimpleEnergy(tf.keras.Model):
 
     return Energy, Forces
 
-avTF = tf.constant(av, dtype=tf.float32)
-stdTF = tf.constant(std, dtype=tf.float32)
+av_tf = tf.constant(av, dtype=tf.float32)
+std_tf = tf.constant(std, dtype=tf.float32)
+radious_tf = tf.constant(radious, dtype=tf.float32)
+smooth_radious_tf = tf.constant(smoothRadious, dtype=tf.float32)
+
 
 ## Defining the model
-model = DeepMDsimpleEnergy(Npoints, L, radious, smoothRadious, 
+model = DeepMDsimpleEnergy(Npoints, L, radious_tf, smooth_radious_tf, 
                            maxNumNeighs, filterNet, fittingNet, 
-                           avTF, stdTF)
+                           av_tf, std_tf)
 
 # quick run of the model to check that it is correct.
 # we use a small set 
@@ -445,7 +448,7 @@ print("Relative Error in the forces is " +str(err.numpy()))
 #   tape.watch(inputs)
 #   # (Nsamples, Npoints)
 #   # in this case we are only considering the distances
-#   genCoordinates = genDistInvPerNlist2DSmooth(inputs, model.Npoints, 
+#   genCoordinates = genDistInvPerNlistVec2DSmooth(inputs, model.Npoints, 
 #                                               neighList, model.rC, 
 #                                               model.rSc, model.L, 
 #                                               model.av, model.std) # this need to be fixed
