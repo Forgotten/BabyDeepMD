@@ -1966,7 +1966,7 @@ def genDistInvPerNlistVec2D(Rin, neighList, L,
     bx = tf.math.multiply(R_DiffX,binv)
     by = tf.math.multiply(R_DiffY,binv)
 
-    zeroDummy = tf.zeros_like(bnorm)
+    zeroDummy = tf.zeros_like(norm)
 
     binv_safe = tf.where(mask, (binv- av[0])/std[0], zeroDummy)
     bx_safe = tf.where(mask, bx, zeroDummy)
@@ -2424,7 +2424,7 @@ def genDistInvPerNlistVec2DSmooth(Rin, neighList, L, rC, rSc,
     # computing the normalized norm
     # bnorm = (tf.abs(norm) - av[0])/std[0]
     
-    Sinv = smoothCutoff(bnorm, rSc, rC)
+    Sinv = smoothCutoff(norm, rSc, rC)
 
     binv = tf.math.reciprocal(norm) 
 
@@ -2434,7 +2434,7 @@ def genDistInvPerNlistVec2DSmooth(Rin, neighList, L, rC, rSc,
     bx = tf.math.multiply(bx,Sinv)
     by = tf.math.multiply(by,Sinv)
 
-    zeroDummy = tf.zeros_like(bnorm)
+    zeroDummy = tf.zeros_like(norm)
 
     binv_safe = tf.where(mask, (Sinv- av[0])/std[0], zeroDummy)
     bx_safe = tf.where(mask, bx, zeroDummy)

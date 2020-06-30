@@ -154,7 +154,7 @@ neighList = tf.Variable(Idx)
 Npoints = Np*Ncells**2
 
 
-genCoordinates = genDistInvPerNlistVec2DSmooth(Rin, Npoints, 
+genCoordinates = genDistInvPerNlistVec2DSmooth(Rin, 
                                             neighList,radious, 
                                             smoothRadious,  L)
 filter = tf.cast(tf.reduce_sum(tf.abs(genCoordinates), axis = -1)>0, tf.int32)
