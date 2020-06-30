@@ -209,9 +209,11 @@ class DeepMDsimpleEnergy(tf.keras.Model):
     self.descriptorDim = descripDim[-1]
     # we may need to use the tanh here
     self.layerPyramid   = pyramidLayer(descripDim, 
-                                       actfn = tf.nn.tanh)
+                                       actfn = tf.nn.tanh,
+                                       initializer = tf.initializers.GlorotUniform())
     self.layerPyramidInv  = pyramidLayer(descripDim, 
-                                       actfn = tf.nn.tanh)
+                                       actfn = tf.nn.tanh,
+                                       initializer = tf.initializers.GlorotUniform())
     
     # we may need to use the tanh especially here
     self.fittingNetwork = pyramidLayer(fittingDim, 
@@ -418,7 +420,7 @@ for cycle, (epochs, batchSizeL) in enumerate(zip(Nepochs, batchSizeArray)):
 ##### testing ######
 pointsTest, \
 potentialTest, \
-forcesTest  = genDataPer2D(Ncells, Np, mu, 1000, minDelta, Lcell)
+forcesTest  = genDataPer2D(Ncells, Np, mu, 100, minDelta, Lcell)
 
 Idx = computInterList2DOpt(pointsTest, L,  radious, maxNumNeighs)
 neighList = tf.Variable(Idx)
