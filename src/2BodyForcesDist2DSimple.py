@@ -89,16 +89,31 @@ checkFile = checkFolder + "checkpoint_2D_" + nameScript + \
 print("Using data in %s"%(dataFile))
 
 # TODO: add the path file for this one
-assert potentialType == "Periodic"
+assert potentialType == "Periodic" or\
+       potentialType == "YukawaPeriodic"
 
 # if the file doesn't exist we create it
 if not path.exists(dataFile):
   # TODO: encapsulate all this in a function
   print("Data file does not exist, we create a new one")
 
-  pointsArray, \
-  potentialArray, \
-  forcesArray  = genDataPer2D(Ncells, Np, mu, Nsamples, minDelta, Lcell)
+  if potentialType == "Periodic":
+
+    print("Creating %s data"%(potentialType))
+    pointsArray, \
+    potentialArray, \
+    forcesArray  = genDataPer2D(Ncells, Np, 
+                                mu, Nsamples, 
+                                minDelta, Lcell)
+
+  elif potentialType == "YukawaPeriodic":
+
+    print("Creating %s data"%(potentialType))
+    pointsArray, \
+    potentialArray, \
+    forcesArray  = genDataYukawa2DPer(Ncells, Np, 
+                                      mu, Nsamples, 
+                                      minDelta, Lcell)
   
   hf = h5py.File(dataFile, 'w') 
   
