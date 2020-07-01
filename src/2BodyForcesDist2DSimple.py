@@ -18,6 +18,7 @@ import sys
 import json
 
 from data_gen_2d import genDataPer2D
+from data_gen_2d import genDataYukawa2DPer
 from utilities import genDistInvPerNlistVec2D, trainStepList, computInterList2DOpt
 from utilities import MyDenseLayer, pyramidLayer, pyramidLayerNoBias
 
