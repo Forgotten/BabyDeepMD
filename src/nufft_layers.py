@@ -15,10 +15,10 @@ def gaussianDeconv2D(kx, ky, tau):
 
 
 
-class NUFFTLayerMultiChannel2DInit(tf.keras.layers.Layer):
+class NUFFTLayerMultiChannel2D(tf.keras.layers.Layer):
   # this layers uses a few kernels to approximate exp(-mu)
   # and we add the exact mu to check if that becomes worse
-  def __init__(self, nChannels, NpointsMesh, tau, xLims, 
+  def __init__(self, nChannels, NpointsMesh, xLims, 
                mu0 = 1.0, mu1 = 1.0):
     super(NUFFTLayerMultiChannelInit, self).__init__()
     self.nChannels = nChannels
@@ -31,7 +31,6 @@ class NUFFTLayerMultiChannel2DInit(tf.keras.layers.Layer):
     # we need the number of points to be odd 
     assert NpointsMesh % 2 == 1
 
-    
     self.xLims = xLims
     self.L = np.abs(xLims[1] - xLims[0])
     self.tau = tf.constant(12*(self.L/(2*np.pi*NpointsMesh))**2, 
@@ -41,7 +40,8 @@ class NUFFTLayerMultiChannel2DInit(tf.keras.layers.Layer):
                                             NpointsMesh//2, 
                                             NpointsMesh), 
                               dtype = tf.float32)
-    self.ky_grid , self.kx_grid = tf.meshgrid(self.kGrid, self.kGrid ) 
+    self.ky_grid, self.kx_grid = tf.meshgrid(self.kGrid, 
+                                             self.kGrid ) 
 
     # we need to define a mesh betwen xLims[0] and xLims[1]
     self.xGrid =  tf.constant(np.linspace(xLims[0], 
@@ -49,7 +49,8 @@ class NUFFTLayerMultiChannel2DInit(tf.keras.layers.Layer):
                                           NpointsMesh+1)[:-1], 
                               dtype = tf.float32)
 
-    self.y_grid , self.x_grid = tf.meshgrid(self.xGrid, self.xGrid) 
+    self.y_grid, self.x_grid = tf.meshgrid(self.xGrid, 
+                                           self.xGrid) 
 
 
 
@@ -65,11 +66,12 @@ class NUFFTLayerMultiChannel2DInit(tf.keras.layers.Layer):
                                                   +  tf.square(self.ky_grid) \
                                                   +  tf.square(self.mu0)), 0)
 
+    # QUESTION: can we do this without the numpy() call? 
     initKExp = tf.keras.initializers.Constant(xExp.numpy())
 
     # (1,NpointsMesh,NpointsMesh)
-    xExp2 = 4*np.pi*tf.expand_dims(tf.math.reciprocal(tf.square(self.kx_grid) \
-                                                  +  tf.square(self.ky_grid) \
+    xExp2 = 4*np.pi*tf.expand_dims(tf.math.reciprocal(tf.square(self.kx_grid)\
+                                                  +  tf.square(self.ky_grid)\
                                                   +  tf.square(self.mu1)), 0)
 
 
@@ -85,10 +87,11 @@ class NUFFTLayerMultiChannel2DInit(tf.keras.layers.Layer):
                        shape = (1, self.NpointsMesh)))
 
     self.multipliersRe.append(self.add_weight("multRe_1",
-                       initializer=initKExp2, shape = (1, self.NpointsMesh)))
+                              initializer=initKExp2, 
+                              shape = (1, self.NpointsMesh)))
     self.multipliersIm.append(self.add_weight("multIm_1",
-                       initializer=tf.initializers.zeros(), 
-                        shape = (1, self.NpointsMesh)))
+                              initializer=tf.initializers.zeros(), 
+                              shape = (1, self.NpointsMesh)))
 
 
     # this needs to be properly initialized it, otherwise it won't even be enough
@@ -99,10 +102,14 @@ class NUFFTLayerMultiChannel2DInit(tf.keras.layers.Layer):
     # this needs to be perodic distance!!!
     # (batch_size, Np*Ncells, 2)
     diffx  = tf.expand_dims(tf.expand_dims(input[:,:,0], -1), -1) \
-           - tf.reshape(self.x_grid, (1,1, self.NpointsMesh, self.NpointsMesh))
+           - tf.reshape(self.x_grid, (1,1, 
+                                      self.NpointsMesh, 
+                                      self.NpointsMesh))
 
     diffy  = tf.expand_dims(tf.expand_dims(input[:,:,1], -1), -1) \
-           - tf.reshape(self.y_grid, (1,1, self.NpointsMesh, self.NpointsMesh))
+           - tf.reshape(self.y_grid, (1,1, 
+                                      self.NpointsMesh, 
+                                      self.NpointsMesh))
 
     # 2 x (batch_size, Np*Ncells, NpointsMesh, NpointsMesh)
     # we compute all the localized gaussians
@@ -114,7 +121,8 @@ class NUFFTLayerMultiChannel2DInit(tf.keras.layers.Layer):
     # (batch_size, Np*Ncells, NpointsMesh, NpointsMesh)
 
     # we add them together
-    arrayReducGaussian = tf.complex(tf.reduce_sum(array_gaussian, axis = 1), 0.0)
+    arrayReducGaussian = tf.complex(tf.reduce_sum(array_gaussian, 
+                                                  axis = 1), 0.0)
     # (batch_size, NpointsMesh, NpointsMesh)
 
     # (batch_size, NpointsMesh) (we sum the gaussians together)
@@ -126,7 +134,9 @@ class NUFFTLayerMultiChannel2DInit(tf.keras.layers.Layer):
 
     # compute the deconvolution kernel 
     # BEWARE we can have overflowing issues here
-    gauss_deconv = gaussianDeconv2D(self.kx_grid, self.ky_grid, self.tau)
+    gauss_deconv = gaussianDeconv2D(self.kx_grid, 
+                                    self.ky_grid, 
+                                    self.tau)
 
     Deconv = tf.complex(tf.expand_dims(gauss_deconv, 0),0.0)
     #(1, NpointsMesh, NpointsMesh)
@@ -172,7 +182,9 @@ class NUFFTLayerMultiChannel2DInit(tf.keras.layers.Layer):
     print(multfft.shape)
     print("inverse fft")
 
-    irfft = tf.math.real(tf.expand_dims(tf.signal.ifft2(tf.signal.ifftshift(multfftDeconv)), 1))
+    irfft = tf.math.real(tf.expand_dims(
+                         tf.signal.ifft2(
+                         tf.signal.ifftshift(multfftDeconv)), 1))
     #(batch_size, 1, 2, NpointsMesh, NpointsMesh)
 
     local = irfft*tf.expand_dims(array_gaussian, 2)

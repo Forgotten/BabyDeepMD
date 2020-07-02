@@ -67,7 +67,7 @@ def genDataPer2D(Ncells, Np, mu, Nsamples, minDelta = 0.0, Lcell = 0.0):
 		points = np.reshape(points, (Np*Ncells**2,1,2))
 		pointsT = np.reshape(points, (1,Np*Ncells**2,2))
 
-		R = potentialPer(points,pointsT, mu, L)
+		R = potentialPer(points, pointsT, mu, L)
 
 		RR = np.triu(R, 1)
 		potTotal = np.sum(RR)
@@ -215,7 +215,7 @@ def genDataYukawa2DPer(Ncells, Np, sigma, Nsamples, minDelta = 0.0, Lcell = 0.0)
 						   idx_point_y.reshape((-1,1)) 
 						   - idx_point_y.reshape((-1,1)).T]
 
-		Fy = dpotdx[idx_point_x.reshape((-1,1)) 
+		Fy = dpotdy[idx_point_x.reshape((-1,1)) 
 						   - idx_point_x.reshape((-1,1)).T, 
 						   idx_point_y.reshape((-1,1)) 
 						   - idx_point_y.reshape((-1,1)).T]
