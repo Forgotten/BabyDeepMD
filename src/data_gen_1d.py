@@ -361,7 +361,7 @@ def computeDerPotPerNUFFT(Nx, mu, Ls, xCenter = 0):
 	filterDeconv = gaussianDeconv(kGrid, tau)
 
 	xFFTDeconv = xFFT*filterDeconv
-	yFFT = xFFTDeconv*mult/(2*np.pi*Nx/Ls)
+	yFFT = xFFTDeconv*mult/(2*np.pi)#*Nx/Ls)
 	
 	y = np.real(np.fft.ifft(np.fft.ifftshift(yFFT)))
 
