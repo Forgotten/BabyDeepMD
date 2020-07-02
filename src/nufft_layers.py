@@ -20,7 +20,7 @@ class NUFFTLayerMultiChannel2D(tf.keras.layers.Layer):
   # and we add the exact mu to check if that becomes worse
   def __init__(self, nChannels, NpointsMesh, xLims, 
                mu0 = 1.0, mu1 = 1.0):
-    super(NUFFTLayerMultiChannelInit, self).__init__()
+    super(NUFFTLayerMultiChannel2D, self).__init__()
     self.nChannels = nChannels
     self.NpointsMesh = NpointsMesh 
 
