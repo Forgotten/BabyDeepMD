@@ -1979,6 +1979,87 @@ def genDistInvPerNlistVec2D(Rin, neighList, L,
     return R_total
 
 
+@tf.function
+def genDistInvPerNlistVec3D(Rin, neighList, L, 
+                            av = tf.constant([0.0, 0.0], dtype = tf.float32),
+                            std =  tf.constant([1.0, 1.0], dtype = tf.float32)):
+    # This function follows the same trick 
+    # function to generate the generalized coordinates for periodic data
+    # the input has dimensions (Nsamples, Ncells*Np)
+    # the ouput has dimensions (Nsamples*Ncells*Np*maxNumNeighbors, 4)
+    # we try to allocate an array before hand and use high level
+    # tensorflow operations
+
+    # neighList is a (Nsample, Npoints, maxNeigh)
+
+    # add assert with respect to the input shape 
+    Nsamples = Rin.shape[0]
+    maxNumNeighs = neighList.shape[-1]
+
+    # computing the mask with the non-padded variables
+    mask = neighList > -1
+
+    # we try extract information per dimension first
+    # repeat x0 -> [x0, x0, x0, x0]
+    RinRepX  = tf.tile(tf.expand_dims(Rin[:,:,0], -1),
+                       [1 ,1, maxNumNeighs] )
+    # extract the properly indexed terms
+    # -> [xi_1 xi_2 xi_3, ...]
+    RinGatherX = tf.gather(Rin[:,:,0], neighList, 
+                           batch_dims = 1, axis = 1)
+
+    RinRepY  = tf.tile(tf.expand_dims(Rin[:,:,1], -1),
+                       [1 ,1, maxNumNeighs] )
+    RinGatherY = tf.gather(Rin[:,:,1], neighList, 
+                           batch_dims = 1, axis = 1)
+
+    RinRepZ  = tf.tile(tf.expand_dims(Rin[:,:,2], -1),
+                       [1 ,1, maxNumNeighs] )
+    RinGatherZ = tf.gather(Rin[:,:,2], neighList, 
+                           batch_dims = 1, axis = 1)
+
+    # substracting  in X
+    R_DiffX = RinGatherX - RinRepX
+    # computing the periodic distance
+    R_DiffX = R_DiffX - L*tf.round(R_DiffX/L)
+
+    # substracting in Y 
+    R_DiffY = RinGatherY - RinRepY
+    # computing the periodic distance
+    R_DiffY = R_DiffY - L*tf.round(R_DiffY/L)
+
+    # substracting in Z
+    R_DiffZ = RinGatherZ - RinRepZ
+    # computing the periodic distance
+    R_DiffZ = R_DiffZ - L*tf.round(R_DiffZ/L)
+
+    # computing the norm 
+    norm = tf.sqrt(   tf.square(R_DiffX) 
+                    + tf.square(R_DiffY)
+                    + tf.square(R_DiffZ))
+    # computing the normalized norm
+    # bnorm = (tf.abs(norm) - av[0])/std[0]
+    
+    binv = tf.math.reciprocal(norm) 
+
+    bx = tf.math.multiply(R_DiffX,binv)
+    by = tf.math.multiply(R_DiffY,binv)
+    bz = tf.math.multiply(R_DiffZ,binv)
+
+    zeroDummy = tf.zeros_like(norm)
+
+    binv_safe = tf.where(mask, (binv- av[0])/std[0], zeroDummy)
+    bx_safe = tf.where(mask, bx, zeroDummy)
+    by_safe = tf.where(mask, by, zeroDummy)
+    bz_safe = tf.where(mask, bz, zeroDummy)
+    
+    R_total = tf.concat([tf.reshape(binv_safe, (-1,1)), 
+                         tf.reshape(bx_safe,   (-1,1)), 
+                         tf.reshape(by_safe,   (-1,1)),
+                         tf.reshape(bz_safe,   (-1,1)) ], axis = 1)
+
+    return R_total
+
 # This one doesn't work it the optimization step refuses to run
 @tf.function
 def genDistInvPerNlistLoop(Rin, Npoints, neighList, L, av = [0.0, 0.0], std = [1.0, 1.0]):
