@@ -32,7 +32,8 @@ class NUFFTLayerMultiChannel2D(tf.keras.layers.Layer):
     assert NpointsMesh % 2 == 1
 
     self.xLims = xLims
-    self.L = np.abs(xLims[1] - xLims[0])
+    print(xLims)
+    self.L = np.abs(self.xLims[1] - self.xLims[0])
     self.tau = tf.constant(12*(self.L/(2*np.pi*NpointsMesh))**2, 
                            dtype = tf.float32)# the size of the mollifications
     self.kGrid = tf.constant((2*np.pi/self.L)*\
@@ -81,17 +82,20 @@ class NUFFTLayerMultiChannel2D(tf.keras.layers.Layer):
     self.multipliersIm = []
 
     self.multipliersRe.append(self.add_weight("multRe_0",
-                       initializer=initKExp, shape = (1, self.NpointsMesh)))
+                       initializer=initKExp, 
+                       shape = (1, self.NpointsMesh,  self.NpointsMesh)))
     self.multipliersIm.append(self.add_weight("multIm_0",
                        initializer=tf.initializers.zeros(), 
-                       shape = (1, self.NpointsMesh)))
+                       shape = (1, self.NpointsMesh,  self.NpointsMesh)))
 
     self.multipliersRe.append(self.add_weight("multRe_1",
                               initializer=initKExp2, 
-                              shape = (1, self.NpointsMesh)))
+                              shape = (1, self.NpointsMesh,  
+                                          self.NpointsMesh)))
     self.multipliersIm.append(self.add_weight("multIm_1",
                               initializer=tf.initializers.zeros(), 
-                              shape = (1, self.NpointsMesh)))
+                              shape = (1, self.NpointsMesh,  
+                                          self.NpointsMesh)))
 
 
     # this needs to be properly initialized it, otherwise it won't even be enough
@@ -179,11 +183,11 @@ class NUFFTLayerMultiChannel2D(tf.keras.layers.Layer):
     multfftDeconv = tf.multiply(multFFT, tf.expand_dims(Deconv,1))
     #(batch_size, 2, NpointsMesh, NpointsMesh)
 
-    print(multfft.shape)
-    print("inverse fft")
+    # tf.print(multfft.shape)
+    # tf.print("inverse fft")
 
     irfft = tf.math.real(tf.expand_dims(
-                         tf.signal.ifft2(
+                         tf.signal.ifft2d(
                          tf.signal.ifftshift(multfftDeconv)), 1))
     #(batch_size, 1, 2, NpointsMesh, NpointsMesh)
 
@@ -195,6 +199,8 @@ class NUFFTLayerMultiChannel2D(tf.keras.layers.Layer):
 
     fmm = tf.reduce_sum(tf.reduce_sum(local, axis = 4), axis = 3)\
           /(2*np.pi*self.NpointsMesh/self.L)**2
+
+    # tf.print(fmm.shape)
     # (batch_size, Np*Ncells, 2)
 
     return fmm 
