@@ -66,7 +66,7 @@ maxNumNeighs = data["maxNumNeighbors"]
 radious = data["radious"]
 
 # hard coded parameters for the NUFFT
-NpointsFourier = 1001
+NpointsFourier = 251
 fftChannels = 2
 
 # Limits of the super cell
@@ -163,7 +163,7 @@ forcesArray /= forcesStd
 Rinput = tf.Variable(pointsArray, name="input", dtype = tf.float32)
 
 # we only consider the first 100 
-Rin = Rinput[:100,:,:]
+Rin = Rinput[:2,:,:]
 #compute the statistics of the inputs in order to rescale 
 #the descriptor
 
@@ -218,8 +218,11 @@ class DeepMDsimpleEnergy(tf.keras.Model):
                std = [1.0, 1.0],
                NpointsFourier = 500, 
                fftChannels = 4,
-               sigmaFFT = 0.1, 
                xLims = [0.0, 10.0],
+               av_long_range = tf.constant([0.0, 0.0], 
+                                            dtype = tf.float32),
+               std_long_range = tf.constant([1.0, 1.0], 
+                                            dtype = tf.float32),
                name='deepMDsimpleEnergy',
                **kwargs):
 
@@ -236,12 +239,17 @@ class DeepMDsimpleEnergy(tf.keras.Model):
     self.descripDim = descripDim
     self.fittingDim = fittingDim
     self.descriptorDim = descripDim[-1]
+    self.fftChannels = fftChannels
+
+    self.av_long_range  = tf.reshape(av_long_range, (1,1,2))
+    self.std_long_range = tf.reshape(std_long_range, (1,1,2))
+
     # we may need to use the tanh here
     self.layerPyramid   = pyramidLayer(descripDim, 
                                        actfn = tf.nn.tanh)
     self.layerPyramidDir  = pyramidLayer(descripDim, 
                                        actfn = tf.nn.tanh)
-        # Long range interactions
+    # Long range interactions
     self.NUFFTLayer = NUFFTLayerMultiChannel2D(fftChannels, \
                                               NpointsFourier, 
                                               xLims, 
@@ -285,9 +293,9 @@ class DeepMDsimpleEnergy(tf.keras.Model):
       # (Nsamples*Ncells*Np, descriptorDim)
 
       ## Normalization for mu = 5 (this should be different for different values)
-      long_range_coord = (self.NUFFTLayer(inputs) - \
-                         np.array([0.26040068, 0.01500177]).reshape((1,1,2)))/ \
-                         np.array([0.0147799, 0.00377196]).reshape((1,1,2))
+      long_range_coord = (self.NUFFTLayer(inputs) )#\
+                       #   - self.av_long_range) \
+                        #  / self.av_long_range
       # # (Nsamples, Ncells*Np, 1) # we are only using 4 kernels
       # we normalize the output of the fmm layer before feeding them to network
       long_range_coord2 = tf.reshape(long_range_coord, 
@@ -300,7 +308,7 @@ class DeepMDsimpleEnergy(tf.keras.Model):
       DLongRange = tf.concat([D_short, L3], axis = 1)
 
 
-      F2 = self.fittingNetwork(D)
+      F2 = self.fittingNetwork(DLongRange)
       F = self.linfitNet(F2)
 
       Energy = tf.reduce_sum(tf.reshape(F, (-1, self.Npoints)),
@@ -315,13 +323,22 @@ class DeepMDsimpleEnergy(tf.keras.Model):
 avTF = tf.constant(av, dtype=tf.float32)
 stdTF = tf.constant(std, dtype=tf.float32)
 
-## Defining the model
-model = DeepMDsimpleEnergy(Npoints, L, maxNumNeighs,
-                           filterNet, fittingNet, 
-                            avTF, stdTF, 
-                            NpointsFourier, fftChannels, 
-                            xLims)
+av_long_range_TF = tf.reshape(tf.constant([0.0, 0.0], 
+                              dtype=tf.float32), 
+                              (1,1,2))
+std_long_range_TF = tf.reshape(tf.constant([1.0, 1.0], 
+                              dtype=tf.float32),
+                              (1,1,2))
 
+## Defining the model
+model = DeepMDsimpleEnergy(Npoints, L, 
+                           maxNumNeighs,
+                           filterNet, fittingNet, 
+                           avTF, stdTF, 
+                           NpointsFourier, fftChannels, 
+                           xLims, 
+                           av_long_range_TF, 
+                           std_long_range_TF)
 
 # quick run of the model to check that it is correct.
 # we use a small set 
