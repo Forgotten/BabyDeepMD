@@ -8,30 +8,78 @@ def forces(x,y, mu):
                                                            axis = -1, keepdims = True)))\
            *np.exp(-mu*np.sqrt(np.sum(np.square(y - x), axis = -1, keepdims = True)))
 
-def potentialPer(x,y, mu, L):
-    shift_x = np.reshape(np.array([L, 0.]), (1,1,2))
-    shift_y = np.reshape(np.array([0., L]), (1,1,2))
+def potential_per3D(x,y, mu, L):
+    shift_x = np.reshape(np.array([L, 0., 0.]), (1,1,3))
+    shift_y = np.reshape(np.array([0., L, 0.]), (1,1,3))
+    shift_z = np.reshape(np.array([0., 0., L]), (1,1,3))
 
-    return potential(x,y, mu) + potential(x+shift_x,y, mu) + potential(x-shift_x,y, mu)\
-           +potential(x+shift_y,y, mu) + potential(x+shift_x+shift_y,y, mu) + potential(x-shift_x+shift_y,y, mu) \
-           +potential(x-shift_y,y, mu) + potential(x+shift_x-shift_y,y, mu) + potential(x-shift_x-shift_y,y, mu)
+    return    potential(x, y, mu) \
+            + potential(x+shift_x,y, mu) \
+            + potential(x-shift_x,y, mu)\
+            + potential(x+shift_y,y, mu) \
+            + potential(x+shift_x+shift_y,y, mu) \
+            + potential(x-shift_x+shift_y,y, mu) \
+            + potential(x-shift_y,y, mu) \
+            + potential(x+shift_x-shift_y,y, mu) \
+            + potential(x-shift_x-shift_y,y, mu) \
+            + potential(x-shift_z, y, mu) \
+            + potential(x-shift_z+shift_x,y, mu) \
+            + potential(x-shift_z-shift_x,y, mu)\
+            + potential(x-shift_z+shift_y,y, mu) \
+            + potential(x-shift_z+shift_x+shift_y,y, mu) \
+            + potential(x-shift_z-shift_x+shift_y,y, mu) \
+            + potential(x-shift_z-shift_y,y, mu) \
+            + potential(x-shift_z+shift_x-shift_y,y, mu) \
+            + potential(x-shift_z-shift_x-shift_y,y, mu)\
+            + potential(x+shift_z, y, mu) \
+            + potential(x+shift_z+shift_x,y, mu) \
+            + potential(x+shift_z-shift_x,y, mu)\
+            + potential(x+shift_z+shift_y,y, mu) \
+            + potential(x+shift_z+shift_x+shift_y,y, mu) \
+            + potential(x+shift_z-shift_x+shift_y,y, mu) \
+            + potential(x+shift_z-shift_y,y, mu) \
+            + potential(x+shift_z+shift_x-shift_y,y, mu) \
+            + potential(x+shift_z-shift_x-shift_y,y, mu)
 
+def forces_per3D(x,y, mu, L):
+    shift_x = np.reshape(np.array([L, 0., 0.]), (1,1,3))
+    shift_y = np.reshape(np.array([0., L, 0.]), (1,1,3))
+    shift_z = np.reshape(np.array([0., 0., L]), (1,1,3))
 
-def forcesPer(x,y, mu, L):
-    shift_x = np.reshape(np.array([L, 0.]), (1,1,2))
-    shift_y = np.reshape(np.array([0., L]), (1,1,2))
-
-    return   forces(x,y, mu) + forces(x+shift_x,y, mu) + forces(x-shift_x,y, mu)\
-           + forces(x+shift_y,y, mu) + forces(x+shift_x+shift_y,y, mu) + forces(x-shift_x+shift_y,y, mu)\
-           + forces(x-shift_y,y, mu) + forces(x+shift_x-shift_y,y, mu) + forces(x-shift_x-shift_y,y, mu)
-
+    return    forces(x, y, mu) \
+            + forces(x+shift_x,y, mu) \
+            + forces(x-shift_x,y, mu)\
+            + forces(x+shift_y,y, mu) \
+            + forces(x+shift_x+shift_y,y, mu) \
+            + forces(x-shift_x+shift_y,y, mu) \
+            + forces(x-shift_y,y, mu) \
+            + forces(x+shift_x-shift_y,y, mu) \
+            + forces(x-shift_x-shift_y,y, mu) \
+            + forces(x-shift_z, y, mu) \
+            + forces(x-shift_z+shift_x,y, mu) \
+            + forces(x-shift_z-shift_x,y, mu)\
+            + forces(x-shift_z+shift_y,y, mu) \
+            + forces(x-shift_z+shift_x+shift_y,y, mu) \
+            + forces(x-shift_z-shift_x+shift_y,y, mu) \
+            + forces(x-shift_z-shift_y,y, mu) \
+            + forces(x-shift_z+shift_x-shift_y,y, mu) \
+            + forces(x-shift_z-shift_x-shift_y,y, mu)\
+            + forces(x+shift_z, y, mu) \
+            + forces(x+shift_z+shift_x,y, mu) \
+            + forces(x+shift_z-shift_x,y, mu)\
+            + forces(x+shift_z+shift_y,y, mu) \
+            + forces(x+shift_z+shift_x+shift_y,y, mu) \
+            + forces(x+shift_z-shift_x+shift_y,y, mu) \
+            + forces(x+shift_z-shift_y,y, mu) \
+            + forces(x+shift_z+shift_x-shift_y,y, mu) \
+            + forces(x+shift_z-shift_x-shift_y,y, mu)
 
 # TODO: modify this for 3D
 def genDataPer3D(Ncells, Np, mu, Nsamples, minDelta = 0.0, Lcell = 0.0): 
 
-    pointsArray = np.zeros((Nsamples, Np*Ncells**2, 3))
+    pointsArray = np.zeros((Nsamples, Np*Ncells**3, 3))
     potentialArray = np.zeros((Nsamples,1))
-    forcesArray = np.zeros((Nsamples, Np*Ncells**2, 3))
+    forcesArray = np.zeros((Nsamples, Np*Ncells**3, 3))
 
 
     if Lcell == 0.0 :
@@ -71,18 +119,18 @@ def genDataPer3D(Ncells, Np, mu, Nsamples, minDelta = 0.0, Lcell = 0.0):
                          np.square( np.reshape(points, (-1, 1, 3)) 
                                    -np.reshape(points, (1, -1, 3))), axis=-1))
 
-        pointsArray[i, :, :] = np.reshape(points,( Np*Ncells**3, 3))
+        pointsArray[i, :, :] = np.reshape(points,(Np*Ncells**3, 3))
         points  = np.reshape(points, (Np*Ncells**3, 1, 3))
         pointsT = np.reshape(points, (1, Np*Ncells**3, 3))
 
-        R = potentialPer(points, pointsT, mu, L)
+        R = potential_per3D(points, pointsT, mu, L)
 
         RR = np.triu(R, 1)
         potTotal = np.sum(RR)
 
         potentialArray[i,:] = potTotal
 
-        F = forcesPer(points,pointsT, mu, L)
+        F = forces_per3D(points,pointsT, mu, L)
 
         Forces = np.sum(F, axis = 1) 
 
@@ -168,7 +216,9 @@ def computeDerPot3DPer(Nx, mu, Ls, xCenter = [0.0, 0.0, 0.0], nPointSmear = 5):
 
 
 
-def genDataYukawa2DPer(Ncells, Np, sigma, Nsamples, minDelta = 0.0, Lcell = 0.0): 
+def gen_data_yukawa_3D_Per(Ncells, Np, 
+                           sigma, Nsamples, 
+                           minDelta = 0.0, Lcell = 0.0): 
 
     pointsArray = np.zeros((Nsamples, Np*Ncells**2, 2))
     potentialArray = np.zeros((Nsamples,1))
@@ -183,7 +233,8 @@ def genDataYukawa2DPer(Ncells, Np, sigma, Nsamples, minDelta = 0.0, Lcell = 0.0)
     Nx = Ncells*NpointsPerCell + 1
     Ls = Ncells*sizeCell
 
-    x_grid, y_grid, pot, dpotdx, dpotdy = computeDerPot2DPer(Nx, sigma, Ls)
+    x_grid, y_grid, z_grid,
+    pot, dpotdx, dpotdy, dpotdz = computeDerPot3DPer(Nx, sigma, Ls)
 
     idxCell = np.linspace(0,NpointsPerCell-1, NpointsPerCell).astype(int)
     idxStart = np.array([ii*NpointsPerCell for ii in range(Ncells)]).reshape(-1,1)
