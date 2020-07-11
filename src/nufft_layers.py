@@ -212,7 +212,6 @@ class NUFFTLayerMultiChannel2D(tf.keras.layers.Layer):
 
 
 
-
 class NUFFTLayerMultiChannel3D(tf.keras.layers.Layer):
   # this layers uses a few kernels to approximate exp(-mu)
   # and we add the exact mu to check if that becomes worse
