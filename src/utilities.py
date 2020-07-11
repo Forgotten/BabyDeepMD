@@ -1468,7 +1468,7 @@ class NUFFTLayerMultiChannelInit(tf.keras.layers.Layer):
     Deconv = tf.complex(tf.expand_dims(gaussianDeconv(self.kGrid, self.tau), 0),0.0)
     #(1, NpointsMesh)
 
-    rfft = tf.multiply(fftGauss, Deconv)/(2*np.pi*self.NpointsMesh/self.L)
+    rfft = tf.multiply(fftGauss, Deconv)
     #(batch_size, NpointsMesh)
     # we are only using one channel
     #rfft = tf.expand_dims(rfftDeconv, 1)
@@ -1499,6 +1499,7 @@ class NUFFTLayerMultiChannelInit(tf.keras.layers.Layer):
 
     multFFT = tf.concat([multfft, multfft2], axis = 1)
 
+    # applying the decomposition
     multfftDeconv = tf.multiply(multFFT, tf.expand_dims(Deconv,1))
 
     print(multfft.shape)
@@ -3068,7 +3069,8 @@ class NUFFTLayerMultiChannelInitMixed(tf.keras.layers.Layer):
     Deconv = tf.complex(tf.expand_dims(gaussianDeconv(self.kGrid, self.tau), 0),0.0)
     #(1, NpointsMesh)
 
-    rfft = tf.multiply(fftGauss, Deconv)/(2*np.pi)#*self.NpointsMesh/self.L)
+    # mutiplication with the deconvolutioin kernetl
+    rfft = tf.multiply(fftGauss, Deconv)
     #(batch_size, NpointsMesh)
     # we are only using one channel
     #rfft = tf.expand_dims(rfftDeconv, 1)

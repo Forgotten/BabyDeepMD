@@ -152,7 +152,7 @@ class NUFFTLayerMultiChannel2D(tf.keras.layers.Layer):
 
     # BEWARE: I'm not fully sure about the square in the denominator (check)
     # here we should expect a broadcasting
-    rfft = tf.multiply(fftGauss, Deconv)/(2*np.pi*self.NpointsMesh/self.L)**2
+    rfft = tf.multiply(fftGauss, Deconv)
     #(batch_size, NpointsMesh, NpointsMesh)
     # we are only using one channel
     #rfft = tf.expand_dims(rfftDeconv, 1)
