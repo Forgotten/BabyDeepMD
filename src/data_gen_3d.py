@@ -3,76 +3,33 @@ import numpy as np
 def potential(x,y, mu):
     return -np.exp(-mu*np.sqrt(np.sum(np.square(y - x), axis = -1)))
 
+def potential_diff(diff, mu):
+    return -np.exp(-mu*np.sqrt(np.sum(np.square(diff), axis = -1)))
+
 def forces(x,y, mu):
     return -mu*(y - x)/(np.finfo(float).eps+np.sqrt(np.sum(np.square(y - x), \
                                                            axis = -1, keepdims = True)))\
            *np.exp(-mu*np.sqrt(np.sum(np.square(y - x), axis = -1, keepdims = True)))
 
-def potential_per3D(x,y, mu, L):
-    shift_x = np.reshape(np.array([L, 0., 0.]), (1,1,3))
-    shift_y = np.reshape(np.array([0., L, 0.]), (1,1,3))
-    shift_z = np.reshape(np.array([0., 0., L]), (1,1,3))
+def forces_diff(diff, mu):
+    return -mu*(diff)/(np.finfo(float).eps+np.sqrt(np.sum(np.square(diff), \
+                                        axis = -1, keepdims = True)))\
+           *np.exp(-mu*np.sqrt(np.sum(np.square(diff), \
+                                      axis = -1, keepdims = True)))
 
-    return    potential(x, y, mu) \
-            + potential(x+shift_x,y, mu) \
-            + potential(x-shift_x,y, mu)\
-            + potential(x+shift_y,y, mu) \
-            + potential(x+shift_x+shift_y,y, mu) \
-            + potential(x-shift_x+shift_y,y, mu) \
-            + potential(x-shift_y,y, mu) \
-            + potential(x+shift_x-shift_y,y, mu) \
-            + potential(x-shift_x-shift_y,y, mu) \
-            + potential(x-shift_z, y, mu) \
-            + potential(x-shift_z+shift_x,y, mu) \
-            + potential(x-shift_z-shift_x,y, mu)\
-            + potential(x-shift_z+shift_y,y, mu) \
-            + potential(x-shift_z+shift_x+shift_y,y, mu) \
-            + potential(x-shift_z-shift_x+shift_y,y, mu) \
-            + potential(x-shift_z-shift_y,y, mu) \
-            + potential(x-shift_z+shift_x-shift_y,y, mu) \
-            + potential(x-shift_z-shift_x-shift_y,y, mu)\
-            + potential(x+shift_z, y, mu) \
-            + potential(x+shift_z+shift_x,y, mu) \
-            + potential(x+shift_z-shift_x,y, mu)\
-            + potential(x+shift_z+shift_y,y, mu) \
-            + potential(x+shift_z+shift_x+shift_y,y, mu) \
-            + potential(x+shift_z-shift_x+shift_y,y, mu) \
-            + potential(x+shift_z-shift_y,y, mu) \
-            + potential(x+shift_z+shift_x-shift_y,y, mu) \
-            + potential(x+shift_z-shift_x-shift_y,y, mu)
+
+def potential_per3D(x,y, mu, L):
+    diff = y - x
+    diff_per = diff - L*np.round(diff/L)
+
+    return    potential_diff(diff_per, mu)
 
 def forces_per3D(x,y, mu, L):
-    shift_x = np.reshape(np.array([L, 0., 0.]), (1,1,3))
-    shift_y = np.reshape(np.array([0., L, 0.]), (1,1,3))
-    shift_z = np.reshape(np.array([0., 0., L]), (1,1,3))
+    diff = y - x
+    diff_per = diff - L*np.round(diff/L)
 
-    return    forces(x, y, mu) \
-            + forces(x+shift_x,y, mu) \
-            + forces(x-shift_x,y, mu)\
-            + forces(x+shift_y,y, mu) \
-            + forces(x+shift_x+shift_y,y, mu) \
-            + forces(x-shift_x+shift_y,y, mu) \
-            + forces(x-shift_y,y, mu) \
-            + forces(x+shift_x-shift_y,y, mu) \
-            + forces(x-shift_x-shift_y,y, mu) \
-            + forces(x-shift_z, y, mu) \
-            + forces(x-shift_z+shift_x,y, mu) \
-            + forces(x-shift_z-shift_x,y, mu)\
-            + forces(x-shift_z+shift_y,y, mu) \
-            + forces(x-shift_z+shift_x+shift_y,y, mu) \
-            + forces(x-shift_z-shift_x+shift_y,y, mu) \
-            + forces(x-shift_z-shift_y,y, mu) \
-            + forces(x-shift_z+shift_x-shift_y,y, mu) \
-            + forces(x-shift_z-shift_x-shift_y,y, mu)\
-            + forces(x+shift_z, y, mu) \
-            + forces(x+shift_z+shift_x,y, mu) \
-            + forces(x+shift_z-shift_x,y, mu)\
-            + forces(x+shift_z+shift_y,y, mu) \
-            + forces(x+shift_z+shift_x+shift_y,y, mu) \
-            + forces(x+shift_z-shift_x+shift_y,y, mu) \
-            + forces(x+shift_z-shift_y,y, mu) \
-            + forces(x+shift_z+shift_x-shift_y,y, mu) \
-            + forces(x+shift_z-shift_x-shift_y,y, mu)
+    return    forces_diff(diff_per, mu)
+
 
 # TODO: modify this for 3D
 def genDataPer3D(Ncells, Np, mu, Nsamples, minDelta = 0.0, Lcell = 0.0): 
