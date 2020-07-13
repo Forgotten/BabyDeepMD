@@ -240,7 +240,7 @@ class DeepMDsimpleEnergy(tf.keras.Model):
       # (Nsamples*Npoints*maxNumNeighs, descriptorDim)
         
       # here we need to assemble the Baby Deep MD descriptor
-      genCoord = tf.reshape(gen_coordinates, (-1, self.maxNumNeighs, 3))
+      genCoord = tf.reshape(gen_coordinates, (-1, self.maxNumNeighs, 4))
       # (Nsamples*Npoints, maxNumNeighs, 3)
       L1_reshape = tf.reshape(L1, (-1, self.maxNumNeighs, 
                                        self.descriptorDim))
