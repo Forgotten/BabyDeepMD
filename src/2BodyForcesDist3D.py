@@ -16,7 +16,7 @@ import sys
 import json
 
 from data_gen_3d import genDataPer3D
-from utilities import gen_dist_inv_radial_3D, trainStepList, computInterList2DOpt
+from utilities import genDistInvPerNlistVec3D, trainStepList, computInterList2DOpt
 from utilities import MyDenseLayer, pyramidLayer, pyramidLayerNoBias
 
 import os
@@ -87,7 +87,7 @@ checkFile = checkFolder + "checkpoint_2D_" + nameScript + \
 print("Using data in %s"%(dataFile))
 
 # TODO: add the path file for this one
-assert potentialType == "YukawaPeriodic"
+assert potentialType == "Periodic"
 
 # if the file doesn't exist we create it
 if not path.exists(dataFile):
@@ -155,7 +155,7 @@ neighList = tf.Variable(Idx)
 Npoints = Np*Ncells**2
 
 
-gen_coordinates = gen_dist_inv_radial_3D(Rin, neighList, L)
+gen_coordinates = genDistInvPerNlistVec3D(Rin, neighList, L)
 filter = tf.cast(tf.reduce_sum(tf.abs(gen_coordinates), axis = -1)>0, tf.int32)
 numNonZero =  tf.reduce_sum(filter, axis = 0).numpy()
 numTotal = gen_coordinates.shape[0]  
@@ -228,7 +228,7 @@ class DeepMDsimpleEnergy(tf.keras.Model):
       tape.watch(inputs)
       # (Nsamples, Npoints)
       # in this case we are only considering the distances
-      gen_coordinates = gen_dist_inv_radial_3D(inputs, 
+      gen_coordinates = genDistInvPerNlistVec3D(inputs, 
                                           neighList, self.L, 
                                           self.av, self.std) # this need to be fixed
       # (Nsamples*Npoints*maxNumNeighs, 3)
@@ -444,7 +444,7 @@ print("Relative Error in the forces is " +str(err.numpy()))
 #   tape.watch(inputs)
 #   # (Nsamples, Npoints)
 #   # in this case we are only considering the distances
-#   gen_coordinates = gen_dist_inv_radial_3D(inputs, model.Npoints, 
+#   gen_coordinates = genDistInvPerNlistVec3D(inputs, model.Npoints, 
 #                                       neighList, model.L, 
 #                                       model.av, model.std) # this need to be fixed
 #   # (Nsamples*Npoints*maxNumNeighs, 2)
