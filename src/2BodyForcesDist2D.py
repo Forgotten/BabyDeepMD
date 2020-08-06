@@ -131,7 +131,6 @@ potentialArray /= forcesStd
 forcesArray -= forcesMean
 forcesArray /= forcesStd
 
-
 # positions of the 
 Rinput = tf.Variable(pointsArray, name="input", dtype = tf.float32)
 
@@ -425,8 +424,8 @@ forcesTest  = genDataPer2D(Ncells, Np, mu, 100, minDelta, Lcell)
 Idx = computInterList2DOpt(pointsTest, L,  radious, maxNumNeighs)
 neighList = tf.Variable(Idx)
 
-forcesTestRscl =  forcesTest- forcesMean
-forcesTestRscl = forcesTestRscl/forcesStd
+forcesTestRscl =  forcesTest - forcesMean
+forcesTestRscl /= forcesStd
 
 potPred, forcePred = model(pointsTest, neighList)
 

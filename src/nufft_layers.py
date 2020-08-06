@@ -20,6 +20,150 @@ def gaussianDeconv3D(kx, ky, kz, tau):
                                     + tf.square(kz))*tau)
 
 
+# class for 1D NUFFT layer 
+class NUFFTLayerEnergy1D(tf.keras.layers.Layer):
+  # this layers uses a few kernels to approximate exp(-mu)
+  # and we add the exact mu to check if that becomes worse
+  def __init__(self, n_channels, n_points_mesh, tau, xLims, mu1 = 1.0, mu2=0.5):
+    super(NUFFTLayerMultiChannel1D, self).__init__()
+    self.n_channels = n_channels
+    self.n_points_mesh = n_points_mesh 
+    self.mu1 = tf.constant(mu1, dtype=tf.float32)
+    self.mu2 = tf.constant(mu2, dtype=tf.float32)
+    # we need the number of points to be odd 
+    assert n_points_mesh % 2 == 1
+
+    
+    self.xLims = xLims
+    self.L = np.abs(xLims[1] - xLims[0])
+    self.tau = tf.constant(12*(self.L/(2*np.pi*n_points_mesh))**2, 
+                           dtype = tf.float32)# the size of the mollifications
+    self.kGrid = tf.constant((2*np.pi/self.L)*\
+                              np.linspace(-(n_points_mesh//2), 
+                                            n_points_mesh//2, 
+                                            n_points_mesh), 
+                              dtype = tf.float32)
+    # we need to define a mesh betwen xLims[0] and xLims[1]
+    self.xGrid =  tf.constant(np.linspace(xLims[0], 
+                                          xLims[1], 
+                                          n_points_mesh+1)[:-1], 
+                              dtype = tf.float32)
+
+
+  def build(self, input_shape):
+
+    print("building the channels")
+    # we initialize the channel multipliers
+    # we need to add a parametrized family in here
+
+    # initializing the multipliers
+    # # original version 
+    # xExp = tf.expand_dims(tf.expand_dims(4*np.pi*tf.math.reciprocal(tf.square(self.kGrid) + \
+    #                               tf.square(self.mu1)), 0),0)
+    xExp  = tf.expand_dims(4*np.pi*tf.math.reciprocal(tf.square(self.kGrid) + \
+                                  tf.square(self.mu1)), 0)
+    xExp2 = tf.expand_dims(4*np.pi*tf.math.reciprocal(tf.square(self.kGrid) + \
+                                  tf.square(self.mu2)), 0)
+
+    #Im =  tf.zeros([1,1,n_points_mesh])
+    initKExp = tf.keras.initializers.Constant(xExp.numpy())
+    initKExp2 = tf.keras.initializers.Constant(xExp2.numpy())
+
+
+    self.multipliersRe = []
+    self.multipliersIm = []
+
+    self.multipliersRe.append(self.add_weight("multRe_0",
+                       initializer=initKExp, shape = (1, 1, self.n_points_mesh)))
+    self.multipliersIm.append(self.add_weight("multIm_0",
+                       initializer=tf.initializers.zeros(), 
+                       shape = (1, 1,self.n_points_mesh)))
+
+    self.multipliersRe.append(self.add_weight("multRe_1",
+                       initializer=initKExp2, shape = (1, 1,self.n_points_mesh)))
+    self.multipliersIm.append(self.add_weight("multIm_1",
+                       initializer=tf.initializers.zeros(), 
+                        shape = (1, 1, self.n_points_mesh)))
+    self.Weight = []
+    self.Weight.append(self.add_weight("weight_0",
+                       initializer=tf.initializers.constant(0.5), shape = (1,1,1)))
+    self.Weight.append(self.add_weight("weight_1",
+                       initializer=tf.initializers.constant(0.5), shape = (1,1,1)))
+    # this needs to be properly initialized it, otherwise it won't even be enough
+
+#  @tf.function
+  def call(self, input):
+    # we need to add an iterpolation step
+    # this needs to be perodic distance!!!
+    # input (batch_size, Np*Ncells)
+    Npoints = input.shape[-1]
+    batch_size = input.shape[0]
+    diff = tf.expand_dims(input, -1) - tf.reshape(self.xGrid, (1,1, self.n_points_mesh))
+    # (batch_size, Np*Ncells, n_points_mesh)
+    array_gaussian = gaussianPer(diff, self.tau, self.L)
+     # (batch_size, Np*Ncells, n_points_mesh)
+    array_Gaussian_complex = tf.complex(array_gaussian, 0.0)
+    #  (batch_size, Np*Ncells, n_points_mesh)
+
+
+    fftGauss = tf.signal.fftshift(tf.signal.fft(array_Gaussian_complex),axes=-1)
+    ###Note: tf.signal.fftshift will shift all axes in default and we can change the axes of the shift
+    ### tf.signal.fft will do fft over the inner-most dimension of input but we cannot change it
+    ### the shape here is required to be checked carefully
+    
+    # (batch_size, Np*Ncells, n_points_mesh)
+    Deconv = tf.complex(tf.expand_dims(tf.expand_dims(gaussianDeconv(self.kGrid, self.tau), 0),0),0.0)
+    #(1, 1, n_points_mesh)
+
+    rfft = tf.multiply(fftGauss, Deconv)
+    #(batch_size, Np*Ncells,n_points_mesh)
+
+    Rerfft = tf.math.real(rfft)
+    Imrfft = tf.math.imag(rfft)
+
+    #print("applying the multipliers")
+
+    # multfft = tf.multiply(self.multChannels*rfft)
+    multReRefft = tf.multiply(self.multipliersRe[0],Rerfft)
+    multImRefft = tf.multiply(self.multipliersIm[0],Rerfft)
+    multImImfft = tf.multiply(self.multipliersIm[0],Imrfft)
+    multReImfft = tf.multiply(self.multipliersRe[0],Imrfft)
+
+    multfft = tf.complex(multReRefft-multImImfft, \
+                         multReImfft+multImRefft)
+    ##(batch_size, Np*Ncells, n_points_mesh)
+    # an alternative method:   
+    #    fft = tf.complex(self.multipliersRe[0],self.multipliersIm[0])
+    #    multFFT = tf.multiply(rfft,fft)
+    multReRefft2 = tf.multiply(self.multipliersRe[1],Rerfft)
+    multImRefft2 = tf.multiply(self.multipliersIm[1],Rerfft)
+    multImImfft2 = tf.multiply(self.multipliersIm[1],Imrfft)
+    multReImfft2 = tf.multiply(self.multipliersRe[1],Imrfft)
+
+    multfft2 = tf.complex(multReRefft2-multImImfft2, \
+                          multReImfft2+multImRefft2)
+
+    # TODO: We need to modify this one to have only one channel
+    # we add the weights together (no concatenation?)
+    multFFT = tf.multiply(tf.complex(self.Weight[0],0.0),multfft)+\
+              tf.multiply(tf.complex(self.Weight[1],0.0),multfft2)
+
+    multfftDeconv = tf.multiply(multFFT, Deconv)
+    ##(batch_size, Np*Ncells, n_points_mesh)
+
+    irfft = tf.math.real(tf.signal.ifft(tf.signal.ifftshift(multfftDeconv,axes=-1)))/(2*np.pi*self.n_points_mesh/self.L)/(2*np.pi)
+    ##(batch_size, Np*Ncells, n_points_mesh)
+    ## the factor is right w.r.t. the energy computed in gendata
+    diag_sum = tf.reduce_sum(tf.reduce_sum(irfft*array_gaussian,axis=-1),axis=-1)
+    ##(batch_size) the diagonal sum of part energy
+    local = tf.reduce_sum(tf.reduce_sum(irfft,axis=1)*tf.reduce_sum(array_gaussian,axis=1),axis=-1)
+    ##(batch_size) the total sum of part energy
+    energy = (local - diag_sum)/2
+    ##(batch_size)
+    
+    return energy
+
+
 class NUFFTLayerMultiChannel2D(tf.keras.layers.Layer):
   # this layers uses a few kernels to approximate exp(-mu)
   # and we add the exact mu to check if that becomes worse
