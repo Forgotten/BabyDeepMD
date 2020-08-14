@@ -28,9 +28,9 @@ def forcesPer(x,y, mu, L):
 
 def genDataPer2D(Ncells, Np, mu, Nsamples, minDelta = 0.0, Lcell = 0.0): 
 
-    pointsArray = np.zeros((Nsamples, Np*Ncells**2, 2))
-    potentialArray = np.zeros((Nsamples,1))
-    forcesArray = np.zeros((Nsamples, Np*Ncells**2, 2))
+    points_array = np.zeros((Nsamples, Np*Ncells**2, 2))
+    potential_array = np.zeros((Nsamples,1))
+    forces_array = np.zeros((Nsamples, Np*Ncells**2, 2))
 
 
     if Lcell == 0.0 :
@@ -63,7 +63,7 @@ def genDataPer2D(Ncells, Np, mu, Nsamples, minDelta = 0.0, Lcell = 0.0):
             distPoints = np.sqrt(np.sum(np.square(np.reshape(points, (-1,1,2)) 
                                               -np.reshape(points, (1,-1,2))), axis=-1))
 
-        pointsArray[i, :, :] = np.reshape(points,( Np*Ncells**2, 2))
+        points_array[i, :, :] = np.reshape(points,( Np*Ncells**2, 2))
         points = np.reshape(points, (Np*Ncells**2,1,2))
         pointsT = np.reshape(points, (1,Np*Ncells**2,2))
 
@@ -72,15 +72,15 @@ def genDataPer2D(Ncells, Np, mu, Nsamples, minDelta = 0.0, Lcell = 0.0):
         RR = np.triu(R, 1)
         potTotal = np.sum(RR)
 
-        potentialArray[i,:] = potTotal
+        potential_array[i,:] = potTotal
 
         F = forcesPer(points,pointsT, mu, L)
 
         Forces = np.sum(F, axis = 1) 
 
-        forcesArray[i,:,:] = np.reshape(Forces,(Np*Ncells**2, 2))
+        forces_array[i,:,:] = np.reshape(Forces,(Np*Ncells**2, 2))
 
-    return pointsArray, potentialArray, forcesArray
+    return points_array, potential_array, forces_array
 
 
 def gaussian2D(x,y, center, tau):
@@ -144,9 +144,9 @@ def computeDerPot2DPer(Nx, mu, Ls, xCenter = [0.0, 0.0], nPointSmear = 10):
 
 def genDataYukawa2DPer(Ncells, Np, sigma, Nsamples, minDelta = 0.0, Lcell = 0.0): 
 
-    pointsArray = np.zeros((Nsamples, Np*Ncells**2, 2))
-    potentialArray = np.zeros((Nsamples,1))
-    forcesArray = np.zeros((Nsamples, Np*Ncells**2, 2))
+    points_array = np.zeros((Nsamples, Np*Ncells**2, 2))
+    potential_array = np.zeros((Nsamples,1))
+    forces_array = np.zeros((Nsamples, Np*Ncells**2, 2))
 
     if Lcell == 0.0 :
         sizeCell = 1/Ncells
@@ -214,8 +214,8 @@ def genDataYukawa2DPer(Ncells, Np, sigma, Nsamples, minDelta = 0.0, Lcell = 0.0)
             dist += 10*np.eye(Ncells**2*Np)
 
 
-        pointsArray[i, :, 0] = x_grid[idx_point_x.reshape((-1,)), 0]
-        pointsArray[i, :, 1] = y_grid[0, idx_point_y.reshape((-1,))]
+        points_array[i, :, 0] = x_grid[idx_point_x.reshape((-1,)), 0]
+        points_array[i, :, 1] = y_grid[0, idx_point_y.reshape((-1,))]
 
         R = pot[idx_point_x.reshape((-1,1)) 
                         - idx_point_x.reshape((-1,1)).T, 
@@ -225,7 +225,7 @@ def genDataYukawa2DPer(Ncells, Np, sigma, Nsamples, minDelta = 0.0, Lcell = 0.0)
         RR = np.triu(R, 1)
         potTotal = np.sum(RR)
 
-        potentialArray[i,:] = potTotal
+        potential_array[i,:] = potTotal
 
         Fx = dpotdx[idx_point_x.reshape((-1,1)) 
                            - idx_point_x.reshape((-1,1)).T, 
@@ -243,10 +243,10 @@ def genDataYukawa2DPer(Ncells, Np, sigma, Nsamples, minDelta = 0.0, Lcell = 0.0)
         Forcesx = -np.sum(Fx, axis = 1) 
         Forcesy = -np.sum(Fy, axis = 1) 
 
-        forcesArray[i,:,0] = Forcesx.T
-        forcesArray[i,:,1] = Forcesy.T
+        forces_array[i,:,0] = Forcesx.T
+        forces_array[i,:,1] = Forcesy.T
 
-    return pointsArray, potentialArray, forcesArray
+    return points_array, potential_array, forces_array
 
 
 
@@ -260,9 +260,9 @@ def genDataYukawa2DPer(Ncells, Np, sigma, Nsamples, minDelta = 0.0, Lcell = 0.0)
 
 # def gen_dataGaussian(Ncells, Np, sigma, Nsamples, minDelta = 0.0): 
 
-#   pointsArray = np.zeros((Nsamples, Np*Ncells))
-#   potentialArray = np.zeros((Nsamples,1))
-#   forcesArray = np.zeros((Nsamples, Np*Ncells))
+#   points_array = np.zeros((Nsamples, Np*Ncells))
+#   potential_array = np.zeros((Nsamples,1))
+#   forces_array = np.zeros((Nsamples, Np*Ncells))
 
 #   for i in range(Nsamples):
 #       sizeCell = 1/Ncells
@@ -276,22 +276,22 @@ def genDataYukawa2DPer(Ncells, Np, sigma, Nsamples, minDelta = 0.0, Lcell = 0.0)
 #           points = midPoints + sizeCell*(np.random.rand(Np, Ncells) -0.5)
 #           points = np.sort(points.reshape((-1,1)), axis = 0)
 
-#       pointsArray[i, :] = points.T
+#       points_array[i, :] = points.T
 
 #       R = potentialGaussian(points,points.T,sigma)
 
 #       RR = np.triu(R, 1)
 #       potTotal = np.sum(RR)
 
-#       potentialArray[i,:] = potTotal
+#       potential_array[i,:] = potTotal
 
 #       F = forcesGaussian(points,points.T,sigma)
 
 #       Forces = np.sum(F, axis = 1) 
 
-#       forcesArray[i,:] = Forces.T
+#       forces_array[i,:] = Forces.T
 
-#   return pointsArray, potentialArray, forcesArray
+#   return points_array, potential_array, forces_array
 
 
 
@@ -305,9 +305,9 @@ def genDataYukawa2DPer(Ncells, Np, sigma, Nsamples, minDelta = 0.0, Lcell = 0.0)
 
 # def genDataYukawa(Ncells, Np, sigma, Nsamples, minDelta = 0.0, Lcell = 0.0): 
 
-#   pointsArray = np.zeros((Nsamples, Np*Ncells))
-#   potentialArray = np.zeros((Nsamples,1))
-#   forcesArray = np.zeros((Nsamples, Np*Ncells))
+#   points_array = np.zeros((Nsamples, Np*Ncells))
+#   potential_array = np.zeros((Nsamples,1))
+#   forces_array = np.zeros((Nsamples, Np*Ncells))
 
 #   for i in range(Nsamples):
 #       if Lcell == 0.0 :
@@ -325,30 +325,30 @@ def genDataYukawa2DPer(Ncells, Np, sigma, Nsamples, minDelta = 0.0, Lcell = 0.0)
 #           points = midPoints + sizeCell*(np.random.rand(Np, Ncells) -0.5)
 #           points = np.sort(points.reshape((-1,1)), axis = 0)
 
-#       pointsArray[i, :] = points.T
+#       points_array[i, :] = points.T
 
 #       R = potentialYukawa(points,points.T,sigma)
 
 #       RR = np.triu(R, 1)
 #       potTotal = np.sum(RR)
 
-#       potentialArray[i,:] = potTotal
+#       potential_array[i,:] = potTotal
 
 #       F = forcesYukawa(points,points.T,sigma)
 #       F = np.triu(F,1) + np.tril(F,-1)
 
 #       Forces = np.sum(F, axis = 1) 
 
-#       forcesArray[i,:] = Forces.T
+#       forces_array[i,:] = Forces.T
 
-#   return pointsArray, potentialArray, forcesArray
+#   return points_array, potential_array, forces_array
 
 
 # def genDataYukawaPer(Ncells, Np, sigma, Nsamples, minDelta = 0.0, Lcell = 0.0): 
 
-#   pointsArray = np.zeros((Nsamples, Np*Ncells))
-#   potentialArray = np.zeros((Nsamples,1))
-#   forcesArray = np.zeros((Nsamples, Np*Ncells))
+#   points_array = np.zeros((Nsamples, Np*Ncells))
+#   potential_array = np.zeros((Nsamples,1))
+#   forces_array = np.zeros((Nsamples, Np*Ncells))
 
 #   if Lcell == 0.0 :
 #       sizeCell = 1/Ncells
@@ -380,23 +380,23 @@ def genDataYukawa2DPer(Ncells, Np, sigma, Nsamples, minDelta = 0.0, Lcell = 0.0)
 #           points = xGrid[idxPointCell]
 #           pointsExt = np.concatenate([points - Ls, points, points + Ls])
 
-#       pointsArray[i, :] = points.T
+#       points_array[i, :] = points.T
 
 #       R = pot[idxPointCell - idxPointCell.T]
 
 #       RR = np.triu(R, 1)
 #       potTotal = np.sum(RR)
 
-#       potentialArray[i,:] = potTotal
+#       potential_array[i,:] = potTotal
 
 #       F = dpotdx[idxPointCell - idxPointCell.T]
 #       F = np.triu(F,1) + np.tril(F,-1)
 
 #       Forces = -np.sum(F, axis = 1) 
 
-#       forcesArray[i,:] = Forces.T
+#       forces_array[i,:] = Forces.T
 
-#   return pointsArray, potentialArray, forcesArray
+#   return points_array, potential_array, forces_array
 
 
 # def gaussian(x, xCenter, tau):
@@ -484,9 +484,9 @@ def genDataYukawa2DPer(Ncells, Np, sigma, Nsamples, minDelta = 0.0, Lcell = 0.0)
 
 # def genDataLJ_FPer(Ncells, Np, sigma, Nsamples, minDelta = 0.0, Lcell = 0.0): 
 
-#   pointsArray = np.zeros((Nsamples, Np*Ncells))
-#   potentialArray = np.zeros((Nsamples,1))
-#   forcesArray = np.zeros((Nsamples, Np*Ncells))
+#   points_array = np.zeros((Nsamples, Np*Ncells))
+#   potential_array = np.zeros((Nsamples,1))
+#   forces_array = np.zeros((Nsamples, Np*Ncells))
 
 #   if Lcell == 0.0 :
 #       sizeCell = 1/Ncells
@@ -522,23 +522,23 @@ def genDataYukawa2DPer(Ncells, Np, sigma, Nsamples, minDelta = 0.0, Lcell = 0.0)
 #           points = xGrid[idxPointCell]
 #           pointsExt = np.concatenate([points - Ls, points, points + Ls])
 
-#       pointsArray[i, :] = points.T
+#       points_array[i, :] = points.T
 
 #       R = pot[idxPointCell - idxPointCell.T]
 
 #       RR = np.triu(R, 1)
 #       potTotal = np.sum(RR)
 
-#       potentialArray[i,:] = potTotal
+#       potential_array[i,:] = potTotal
 
 #       F = dpotdx[idxPointCell - idxPointCell.T]
 #       F = np.triu(F,1) + np.tril(F,-1)
 
 #       Forces = -np.sum(F, axis = 1) 
 
-#       forcesArray[i,:] = Forces.T
+#       forces_array[i,:] = Forces.T
 
-#   return pointsArray, potentialArray, forcesArray
+#   return points_array, potential_array, forces_array
 
 
 
