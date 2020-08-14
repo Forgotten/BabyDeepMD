@@ -84,9 +84,9 @@ def genDataPer2D(Ncells, Np, mu, Nsamples, minDelta = 0.0, Lcell = 0.0):
 
 
 def gaussian2D(x,y, center, tau):
-    return (1/(2*np.pi*tau**2))*\
+    return (1/(2*np.pi*(tau**2)))*\
            np.exp( -0.5*(  np.square(x - center[0])
-                         + np.square(y - center[1]))/tau**2 )
+                         + np.square(y - center[1]))/tau**2)
 
 
 def computeDerPot2DPer(Nx, mu, Ls, xCenter = [0.0, 0.0], nPointSmear = 10):   
@@ -101,30 +101,38 @@ def computeDerPot2DPer(Nx, mu, Ls, xCenter = [0.0, 0.0], nPointSmear = 10):
 
     filterM = 1#0.5 - 0.5*np.tanh(np.abs(3*kGrid/np.sqrt(Nx)) - np.sqrt(Nx))
     # multiplier 
-    mult = 4*np.pi*filterM/(np.square(kx_grid) + np.square(ky_grid) + np.square(mu))
+    mult = ((Nx/Ls)**2)*4*np.pi*filterM/(  np.square(kx_grid) 
+                                         + np.square(ky_grid) 
+                                         + np.square(mu))
 
-    # here we smear the dirac delta
-    # we use the width of the smearing for 
-    tau = nPointSmear*Ls/Nx
 
-    x = gaussian2D(x_grid-Ls, y_grid-Ls, xCenter, tau) + \
-            gaussian2D(x_grid-Ls, y_grid   , xCenter, tau) + \
-            gaussian2D(x_grid-Ls, y_grid+Ls, xCenter, tau) + \
-            gaussian2D(x_grid       , y_grid-Ls, xCenter, tau) + \
-            gaussian2D(x_grid   , y_grid   , xCenter, tau) + \
-            gaussian2D(x_grid   , y_grid+Ls, xCenter, tau) + \
-            gaussian2D(x_grid+Ls, y_grid-Ls, xCenter, tau) + \
-            gaussian2D(x_grid+Ls, y_grid   , xCenter, tau) + \
-            gaussian2D(x_grid+Ls, y_grid+Ls, xCenter, tau) 
+    # # here we smear the dirac delta
+    # # we use the width of the smearing for 
+    # tau = nPointSmear*Ls/Nx
 
-    xFFT = np.fft.fftshift(np.fft.fft2(x))
+    # x = gaussian2D(x_grid-Ls, y_grid-Ls, xCenter, tau) + \
+    #     gaussian2D(x_grid-Ls, y_grid   , xCenter, tau) + \
+    #     gaussian2D(x_grid-Ls, y_grid+Ls, xCenter, tau) + \
+    #     gaussian2D(x_grid   , y_grid-Ls, xCenter, tau) + \
+    #     gaussian2D(x_grid   , y_grid   , xCenter, tau) + \
+    #     gaussian2D(x_grid   , y_grid+Ls, xCenter, tau) + \
+    #     gaussian2D(x_grid+Ls, y_grid-Ls, xCenter, tau) + \
+    #     gaussian2D(x_grid+Ls, y_grid   , xCenter, tau) + \
+    #     gaussian2D(x_grid+Ls, y_grid+Ls, xCenter, tau) 
+
+    # xFFT = np.fft.fftshift(np.fft.fft2(x))
     
-    fFFT = xFFT*mult
+    # fFFT = xFFT*mult
     
-    f = np.real(np.fft.ifft2(np.fft.ifftshift(fFFT)))
+    # f = np.real(np.fft.ifft2(np.fft.ifftshift(fFFT)))
 
-    dfdxFFT = 1.j*kx_grid*fFFT
-    dfdyFFT = 1.j*ky_grid*fFFT
+    # dfdxFFT = 1.j*kx_grid*fFFT
+    # dfdyFFT = 1.j*ky_grid*fFFT
+
+    f = np.real(np.fft.ifft2(np.fft.ifftshift(mult)))
+
+    dfdxFFT = 1.j*kx_grid*mult
+    dfdyFFT = 1.j*ky_grid*mult
 
     dfdx = np.fft.ifft2(np.fft.ifftshift(dfdxFFT))
     dfdy = np.fft.ifft2(np.fft.ifftshift(dfdyFFT))
