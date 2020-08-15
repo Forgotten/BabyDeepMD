@@ -386,9 +386,7 @@ pointsTest, \
 potentialTest, \
 forcesTest  = genDataPer2D(Ncells, Np, mu, 1000, minDelta, Lcell)
 
-points_np = pointsTest.numpy()
-
-Idx = computInterList2DOpt(points_np, L,  radious, maxNumNeighs)
+Idx = computInterList2DOpt(pointsTest, L,  radious, maxNumNeighs)
 # dimension are (Nsamples, Npoints and MaxNumneighs)
 neighList = tf.Variable(Idx)
 
