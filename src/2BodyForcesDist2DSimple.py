@@ -386,10 +386,16 @@ pointsTest, \
 potentialTest, \
 forcesTest  = genDataPer2D(Ncells, Np, mu, 1000, minDelta, Lcell)
 
+points_np = pointsTest.numpy()
+
+Idx = computInterList2DOpt(points_np, L,  radious, maxNumNeighs)
+# dimension are (Nsamples, Npoints and MaxNumneighs)
+neighList = tf.Variable(Idx)
+
 forcesTestRscl =  forcesTest- forcesMean
 forcesTestRscl = forcesTestRscl/forcesStd
 
-potPred, forcePred = model(pointsTest)
+potPred, forcePred = model(pointsTest, neighList)
 
 err = tf.sqrt(tf.reduce_sum(tf.square(forcePred - forcesTestRscl)))/tf.sqrt(tf.reduce_sum(tf.square(forcePred)))
 print("Relative Error in the forces is " +str(err.numpy()))
