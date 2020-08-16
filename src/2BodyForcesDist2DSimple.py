@@ -146,6 +146,7 @@ print("mean of the forces is %.8f"%(forcesMean))
 print("std of the forces is %.8f"%(forcesStd))
 
 potentialArray /= forcesStd
+
 forcesArray -= forcesMean
 forcesArray /= forcesStd
 
@@ -382,9 +383,23 @@ for cycle, (epochs, batchSizeL) in enumerate(zip(Nepochs, batchSizeArray)):
 
 
 ##### testing ######
-pointsTest, \
-potentialTest, \
-forcesTest  = genDataPer2D(Ncells, Np, mu, 1000, minDelta, Lcell)
+
+# crete testing data depeding on the data tyep used
+if potentialType == "Periodic":
+
+  pointsTest, \
+  potentialTest, \
+  forcesTest  = genDataPer2D(Ncells, Np, 
+                             mu, 100, 
+                             minDelta, Lcell)
+
+elif potentialType == "YukawaPeriodic":
+
+  pointsTest, \
+  potentialTest, \
+  forcesTest  = genDataYukawa2DPer(Ncells, Np, 
+                                   mu, 100, 
+                                   minDelta, Lcell)
 
 Idx = computInterList2DOpt(pointsTest, L,  radious, maxNumNeighs)
 # dimension are (Nsamples, Npoints and MaxNumneighs)
