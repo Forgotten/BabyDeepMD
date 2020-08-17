@@ -297,7 +297,7 @@ else:
 
 ## in the case we need to load an older saved model
 if loadFile: 
-  print("Loading the weights the model contained in %s"(loadFile), flush = True)
+  print("Loading the weights the model contained in %s"%(loadFile), flush = True)
   model.load_weights(loadFile)
 
 ## We use a decent training or a custom one if necessary
