@@ -89,7 +89,7 @@ def gaussian2D(x,y, center, tau):
                          + np.square(y - center[1]))/tau**2)
 
 
-def computeDerPot2DPer(Nx, mu, Ls, xCenter = [0.0, 0.0], nPointSmear = 10):   
+def computeDerPot2DPer(Nx, mu, Ls, xCenter = [0.0, 0.0], nPointSmear = 5):   
     
     xGrid = np.linspace(0, Ls, Nx+1)[:-1] 
     kGrid = 2*np.pi*np.linspace(-(Nx//2), Nx//2, Nx)/Ls      
@@ -98,45 +98,48 @@ def computeDerPot2DPer(Nx, mu, Ls, xCenter = [0.0, 0.0], nPointSmear = 10):
     y_grid, x_grid = np.meshgrid(xGrid, xGrid)
     ky_grid, kx_grid = np.meshgrid(kGrid, kGrid)
 
-
-    filterM = 1#0.5 - 0.5*np.tanh(np.abs(3*kGrid/np.sqrt(Nx)) - np.sqrt(Nx))
     # multiplier 
-    mult = ((Nx/Ls)**2)*4*np.pi*filterM/(  np.square(kx_grid) 
-                                         + np.square(ky_grid) 
-                                         + np.square(mu))
+    mult = 4*np.pi/(  np.square(kx_grid) 
+                      + np.square(ky_grid) 
+                      + np.square(mu))
 
 
-    # # here we smear the dirac delta
-    # # we use the width of the smearing for 
-    # tau = nPointSmear*Ls/Nx
+    # here we smear the dirac delta
+    # we use the width of the smearing for 
+    tau = nPointSmear*Ls/Nx
 
-    # x = gaussian2D(x_grid-Ls, y_grid-Ls, xCenter, tau) + \
-    #     gaussian2D(x_grid-Ls, y_grid   , xCenter, tau) + \
-    #     gaussian2D(x_grid-Ls, y_grid+Ls, xCenter, tau) + \
-    #     gaussian2D(x_grid   , y_grid-Ls, xCenter, tau) + \
-    #     gaussian2D(x_grid   , y_grid   , xCenter, tau) + \
-    #     gaussian2D(x_grid   , y_grid+Ls, xCenter, tau) + \
-    #     gaussian2D(x_grid+Ls, y_grid-Ls, xCenter, tau) + \
-    #     gaussian2D(x_grid+Ls, y_grid   , xCenter, tau) + \
-    #     gaussian2D(x_grid+Ls, y_grid+Ls, xCenter, tau) 
+    # tau_gauss = gaussian2D(x_grid-Ls, y_grid-Ls, xCenter, tau) + \
+    #             gaussian2D(x_grid-Ls, y_grid   , xCenter, tau) + \
+    #             gaussian2D(x_grid-Ls, y_grid+Ls, xCenter, tau) + \
+    #             gaussian2D(x_grid   , y_grid-Ls, xCenter, tau) + \
+    #             gaussian2D(x_grid   , y_grid   , xCenter, tau) + \
+    #             gaussian2D(x_grid   , y_grid+Ls, xCenter, tau) + \
+    #             gaussian2D(x_grid+Ls, y_grid-Ls, xCenter, tau) + \
+    #             gaussian2D(x_grid+Ls, y_grid   , xCenter, tau) + \
+    #             gaussian2D(x_grid+Ls, y_grid+Ls, xCenter, tau) 
 
-    # xFFT = np.fft.fftshift(np.fft.fft2(x))
+    # periodic distance 
+    x_diff = x_grid - x_center[0]
+    x_diff_per = x_diff - Ls*np.round(x_diff/Ls)
+
+    y_diff = y_grid - x_center[0]
+    y_diff_per = y_diff - Ls*np.round(y_diff/Ls)
+
+    # defining the periodic gaussian
+    tau_gauss = gaussian2D(x_diff_per,y_diff_per, [0.0, 0.0], tau)
+
+    # computing the fourier transform of the gaussian 
+    xFFT = np.fft.fftshift(np.fft.fft2(tau_gauss))
     
-    # fFFT = xFFT*mult
+    fFFT = xFFT*mult
     
-    # f = np.real(np.fft.ifft2(np.fft.ifftshift(fFFT)))
+    f = np.real(np.fft.ifft2(np.fft.ifftshift(fFFT)))
 
-    # dfdxFFT = 1.j*kx_grid*fFFT
-    # dfdyFFT = 1.j*ky_grid*fFFT
-
-    f = np.real(np.fft.ifft2(np.fft.ifftshift(mult)))
-
-    dfdxFFT = 1.j*kx_grid*mult
-    dfdyFFT = 1.j*ky_grid*mult
+    dfdxFFT = 1.j*kx_grid*fFFT
+    dfdyFFT = 1.j*ky_grid*fFFT
 
     dfdx = np.fft.ifft2(np.fft.ifftshift(dfdxFFT))
     dfdy = np.fft.ifft2(np.fft.ifftshift(dfdyFFT))
-
 
     return x_grid, y_grid, f, np.real(dfdx), np.real(dfdy)
 
@@ -157,25 +160,22 @@ def genDataYukawa2DPer(Ncells, Np, sigma, Nsamples, minDelta = 0.0, Lcell = 0.0)
     Nx = Ncells*NpointsPerCell + 1
     Ls = Ncells*sizeCell
 
+    # computign the reference potential
     x_grid, y_grid, pot, dpotdx, dpotdy = computeDerPot2DPer(Nx, sigma, Ls)
 
+    # centering the points within each cell 
     idxCell = np.linspace(0,NpointsPerCell-1, NpointsPerCell).astype(int)
+
+    # starting index for each cell 
     idxStart = np.array([ii*NpointsPerCell for ii in range(Ncells)]).reshape(-1,1)
     
+
     idx_cell_y, idx_cell_x = np.meshgrid(idxCell, idxCell) 
     idx_start_y, idx_start_x = np.meshgrid(idxStart, idxStart) 
 
-    idx_point_x = idx_start_x.reshape((Ncells, Ncells, 1)) \
-                      + np.random.choice(idx_cell_x.reshape((-1,)), 
-                                         [Ncells, Ncells, Np])
-
-    idx_point_y = idx_start_y.reshape((Ncells, Ncells, 1)) \
-                      + np.random.choice(idx_cell_y.reshape((-1,)), 
-                                         [Ncells, Ncells, Np])
-
     for i in range(Nsamples):
 
-        # just starting point 
+        # just starting distance 
         dist = [10.0, 10.0]
 
         idx_point_x = idx_start_x.reshape((Ncells, Ncells, 1)) \
