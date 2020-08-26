@@ -211,6 +211,8 @@ def genDataYukawa2DPer(Ncells, Np, sigma, Nsamples, minDelta = 0.0, Lcell = 0.0)
 
             # computing the distance
             dist = np.sqrt(np.square(diff_x) + np.square(diff_y))
+            # the diagonal will be zero, so we add a diagonal to properly 
+            # comput the minimal distance
             dist += 10*np.eye(Ncells**2*Np)
 
 
@@ -227,15 +229,15 @@ def genDataYukawa2DPer(Ncells, Np, sigma, Nsamples, minDelta = 0.0, Lcell = 0.0)
 
         potential_array[i,:] = potTotal
 
-        Fx = dpotdx[idx_point_x.reshape((-1,1)) 
-                           - idx_point_x.reshape((-1,1)).T, 
-                           idx_point_y.reshape((-1,1)) 
-                           - idx_point_y.reshape((-1,1)).T]
+        Fx = dpotdx[  idx_point_x.reshape((-1,1)) 
+                    - idx_point_x.reshape((-1,1)).T, 
+                      idx_point_y.reshape((-1,1)) 
+                    - idx_point_y.reshape((-1,1)).T]
 
-        Fy = dpotdy[idx_point_x.reshape((-1,1)) 
-                           - idx_point_x.reshape((-1,1)).T, 
-                           idx_point_y.reshape((-1,1)) 
-                           - idx_point_y.reshape((-1,1)).T]
+        Fy = dpotdy[  idx_point_x.reshape((-1,1)) 
+                    - idx_point_x.reshape((-1,1)).T, 
+                      idx_point_y.reshape((-1,1)) 
+                    - idx_point_y.reshape((-1,1)).T]
                                            
         Fx = np.triu(Fx,1) + np.tril(Fx,-1)
         Fy = np.triu(Fy,1) + np.tril(Fy,-1)
