@@ -89,7 +89,7 @@ def gaussian2D(x,y, center, tau):
                          + np.square(y - center[1]))/tau**2)
 
 
-def computeDerPot2DPer(Nx, mu, Ls, xCenter = [0.0, 0.0], nPointSmear = 5):   
+def computeDerPot2DPer(Nx, mu, Ls, x_center = [0.0, 0.0], nPointSmear = 5):   
     
     xGrid = np.linspace(0, Ls, Nx+1)[:-1] 
     kGrid = 2*np.pi*np.linspace(-(Nx//2), Nx//2, Nx)/Ls      
