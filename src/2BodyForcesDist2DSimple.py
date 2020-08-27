@@ -332,11 +332,11 @@ loss_metric = tf.keras.metrics.Mean()
 
 points_train = pointsArray[:-100,:,:]
 forces_train = forcesArray[:-100,:,:]
-potential_train = potentialArray[:-100,:,:]
+potential_train = potentialArray[:-100,:]
 
 points_test = pointsArray[-100:,:,:]
 forces_test = forcesArray[-100:,:,:]
-potential_test = potentialArray[-100:,:,:]
+potential_test = potentialArray[-100:,:]
 
 Idx_test = computInterList2DOpt(points_test, L,  radious, maxNumNeighs)
 # dimension are (Nsamples, Npoints and MaxNumneighs)
@@ -397,8 +397,6 @@ for cycle, (epochs, batchSizeL) in enumerate(zip(Nepochs, batchSizeArray)):
 
   print("saving the weights")
   model.save_weights(checkFile+"_cycle_"+str(cycle)+".h5")
-
-
 
   pot_pred, force_pred = model(rin_test, neigh_list_test)
 
