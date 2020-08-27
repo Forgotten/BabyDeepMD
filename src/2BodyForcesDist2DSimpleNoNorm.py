@@ -145,11 +145,6 @@ else:
 print("mean of the forces is %.8f"%(forcesMean))
 print("std of the forces is %.8f"%(forcesStd))
 
-potentialArray /= forcesStd
-
-forcesArray -= forcesMean
-forcesArray /= forcesStd
-
 
 # positions of the 
 Rinput = tf.Variable(pointsArray, name="input", dtype = tf.float32)
