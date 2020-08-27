@@ -343,7 +343,7 @@ Idx_test = computInterList2DOpt(points_test, L,  radious, maxNumNeighs)
 neigh_list_test = tf.Variable(Idx_test)
 
 rin_test = tf.Variable(points_test, dtype=tf.float32)
-
+forces_test = tf.Variable(forces_test, dtype=tf.float32)
 
 ###################training loop ##################################
 
