@@ -328,6 +328,23 @@ optimizer = tf.keras.optimizers.Adam(learning_rate=lrSchedule)
 
 loss_metric = tf.keras.metrics.Mean()
 
+##################train-test split #############################
+
+points_train = pointsArray[:-100,:,:]
+forces_train = forcesArray[:-100,:,:]
+potential_train = potentialArray[:-100,:,:]
+
+points_test = pointsArray[-100:,:,:]
+forces_test = forcesArray[-100:,:,:]
+potential_test = potentialArray[-100:,:,:]
+
+Idx_test = computInterList2DOpt(points_test, L,  radious, maxNumNeighs)
+# dimension are (Nsamples, Npoints and MaxNumneighs)
+neigh_list_test = tf.Variable(Idx_test)
+
+rin_test = tf.Variable(points_test, dtype=tf.float32)
+
+
 ###################training loop ##################################
 
 for cycle, (epochs, batchSizeL) in enumerate(zip(Nepochs, batchSizeArray)):
@@ -341,7 +358,7 @@ for cycle, (epochs, batchSizeL) in enumerate(zip(Nepochs, batchSizeArray)):
   weightE = 0.0
   weightF = 1.0
 
-  x_train = (pointsArray, potentialArray, forcesArray)
+  x_train = (points_train, potential_train, forces_train)
 
   train_dataset = tf.data.Dataset.from_tensor_slices(x_train)
   train_dataset = train_dataset.shuffle(buffer_size=10000).batch(batchSizeL)
@@ -382,36 +399,11 @@ for cycle, (epochs, batchSizeL) in enumerate(zip(Nepochs, batchSizeArray)):
   model.save_weights(checkFile+"_cycle_"+str(cycle)+".h5")
 
 
-##### testing ######
 
-# crete testing data depeding on the data tyep used
-if potentialType == "Periodic":
+  pot_pred, force_pred = model(rin_test, neigh_list_test)
 
-  pointsTest, \
-  potentialTest, \
-  forcesTest  = genDataPer2D(Ncells, Np, 
-                             mu, 100, 
-                             minDelta, Lcell)
-
-elif potentialType == "YukawaPeriodic":
-
-  pointsTest, \
-  potentialTest, \
-  forcesTest  = genDataYukawa2DPer(Ncells, Np, 
-                                   mu, 100, 
-                                   minDelta, Lcell)
-
-Idx = computInterList2DOpt(pointsTest, L,  radious, maxNumNeighs)
-# dimension are (Nsamples, Npoints and MaxNumneighs)
-neighList = tf.Variable(Idx)
-
-forcesTestRscl =  forcesTest- forcesMean
-forcesTestRscl = forcesTestRscl/forcesStd
-
-potPred, forcePred = model(pointsTest, neighList)
-
-err = tf.sqrt(tf.reduce_sum(tf.square(forcePred - forcesTestRscl)))/tf.sqrt(tf.reduce_sum(tf.square(forcePred)))
-print("Relative Error in the forces is " +str(err.numpy()))
+  err = tf.sqrt(tf.reduce_sum(tf.square(force_pred - forces_test)))/tf.sqrt(tf.reduce_sum(tf.square(forces_test)))
+  print("Relative Error in the forces is " +str(err.numpy()))
 
 ##################################################################
 
