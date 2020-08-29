@@ -234,7 +234,7 @@ class DeepMDsimpleEnergy(tf.keras.Model):
       L1   = self.layerPyramid(gen_coordinates[:,:1])
       # (Nsamples*Npoints*maxNumNeighs, descriptorDim)
 
-      D = L1 * gen_coordinates
+      D = L1 * gen_coordinates[:,:1]
       # (Nsamples*Npoints, descriptorDim, 1)
 
 
