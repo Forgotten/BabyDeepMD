@@ -238,7 +238,7 @@ class DeepMDsimpleEnergy(tf.keras.Model):
       # (Nsamples*Npoints, descriptorDim, 1)
 
 
-      D1 = tf.reshape(D, (-1, model.descriptorDim**2))
+      D1 = tf.reshape(D, (-1, model.descriptorDim))
       # (Nsamples*Npoints, descriptorDim*descriptorDim)
 
       F2 = self.fittingNetwork(D1)
