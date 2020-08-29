@@ -275,7 +275,7 @@ else:
 
 ## in the case we need to load an older saved model
 if loadFile: 
-  print("Loading the weights the model contained in %s"(loadFile), flush = True)
+  print("Loading the weights the model contained in %s"%(loadFile), flush = True)
   model.load_weights(loadFile)
 
 ## We use a decent training or a custom one if necessary
@@ -296,15 +296,34 @@ print(batchSizeArray)
 mse_loss_fn = tf.keras.losses.MeanSquaredError()
 
 initialLearningRate = learningRate
-lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+lrSchedule = tf.keras.optimizers.schedules.ExponentialDecay(
              initialLearningRate,
              decay_steps=(Nsamples//batchSizeArray[0])*epochsPerStair,
              decay_rate=decayRate,
              staircase=True)
 
-optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
+optimizer = tf.keras.optimizers.Adam(learning_rate=lrSchedule)
 
 loss_metric = tf.keras.metrics.Mean()
+
+##################train-test split #############################
+
+points_train = pointsArray[:-100,:,:]
+forces_train = forcesArray[:-100,:,:]
+potential_train = potentialArray[:-100,:]
+
+points_test = pointsArray[-100:,:,:]
+forces_test = forcesArray[-100:,:,:]
+potential_test = potentialArray[-100:,:]
+
+
+Idx_test = computInterList2DOpt(points_test, L, 
+                                radious, maxNumNeighs)
+# dimension are (Nsamples, Npoints and MaxNumneighs)
+neigh_list_test = tf.Variable(Idx_test)
+
+rin_test = tf.Variable(points_test, dtype=tf.float32)
+forces_test = tf.Variable(forces_test, dtype=tf.float32)
 
 ###################training loop ##################################
 
@@ -319,7 +338,7 @@ for cycle, (epochs, batchSizeL) in enumerate(zip(Nepochs, batchSizeArray)):
   weightE = 0.0
   weightF = 1.0
 
-  x_train = (pointsArray, potentialArray, forcesArray)
+  x_train = (points_train, potential_train, forces_train)
 
   train_dataset = tf.data.Dataset.from_tensor_slices(x_train)
   train_dataset = train_dataset.shuffle(buffer_size=10000).batch(batchSizeL)
@@ -359,49 +378,7 @@ for cycle, (epochs, batchSizeL) in enumerate(zip(Nepochs, batchSizeArray)):
   print("saving the weights")
   model.save_weights(checkFile+"_cycle_"+str(cycle)+".h5")
 
+  pot_pred, force_pred = model(rin_test, neigh_list_test)
 
-##### testing ######
-pointsTest, \
-potentialTest, \
-forcesTest  = genDataPer3D(Ncells, Np, mu, 100, minDelta, Lcell)
-
-Idx = computInterList2DOpt(pointsTest, L,  radious, maxNumNeighs)
-neighList = tf.Variable(Idx)
-
-forcesTestRscl =  forcesTest- forcesMean
-forcesTestRscl = forcesTestRscl/forcesStd
-
-potPred, forcePred = model(pointsTest, neighList)
-
-err = tf.sqrt(tf.reduce_sum(tf.square(forcePred - forcesTestRscl)))/tf.sqrt(tf.reduce_sum(tf.square(forcePred)))
-print("Relative Error in the forces is " +str(err.numpy()))
-
-##################################################################
-
-# # # ################# Testing each step inside the model#####
-# inputs = Rin
-with tf.GradientTape() as tape:
-  # we watch the inputs 
-  tape.watch(inputs)
-  # (Nsamples, Npoints)
-  # in this case we are only considering the distances
-  gen_coordinates = genDistInvPerNlistVec3D(inputs, 
-                                      neighList, model.L, 
-                                      model.av, model.std) # this need to be fixed
-  # (Nsamples*Npoints*maxNumNeighs, 3)
-  # the L1 and L2 functions only depends on the first entry
-  L1   = model.layerPyramid(gen_coordinates[:,:1])
-  # (Nsamples*Npoints*maxNumNeighs, descriptorDim)
-  LL = L1 * gen_coordinates[:,:1]
-
-  Dtemp = tf.reshape(LL, (-1, model.maxNumNeighs,
-                              model.descriptorDim ))
-  # (Nsamples*Ncells*Np, maxNumNeighs, descriptorDim)
-  D = tf.reduce_sum(Dtemp, axis = 1)
-  # (Nsamples*Npoints, descriptorDim*descriptorDim)
-
-  F2 = model.fittingNetwork(D)
-  F = model.linfitNet(F2)
-  Energy = tf.reduce_sum(tf.reshape(F, (-1, model.Npoints)),
-                         keepdims = True, axis = 1)
-Forces = -tape.gradient(Energy, inputs)
+  err = tf.sqrt(tf.reduce_sum(tf.square(force_pred - forces_test)))/tf.sqrt(tf.reduce_sum(tf.square(forces_test)))
+  print("Relative Error in the forces is " +str(err.numpy()))
