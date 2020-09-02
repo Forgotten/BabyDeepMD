@@ -187,7 +187,7 @@ def genDataYukawa2DPer(Ncells, Np, sigma, Nsamples, minDelta = 0.0, Lcell = 0.0)
                                          [Ncells, Ncells, Np])
 
 
-        while dist < minDelta:
+        while np.min(dist) < minDelta:
 
             idx_point_x = idx_start_x.reshape((Ncells, Ncells, 1)) \
                       + np.random.choice(idx_cell_x.reshape((-1,)), 
@@ -200,7 +200,20 @@ def genDataYukawa2DPer(Ncells, Np, sigma, Nsamples, minDelta = 0.0, Lcell = 0.0)
             points_x = x_grid[idx_point_x, 0]
             points_y = y_grid[0, idx_point_y]
 
-            dist = min_distance(points_x, points_y, Ls)
+            # we compute the periodic distance
+
+            diff_x = points_x.reshape((-1,1)) - points_x.reshape((-1,1)).T
+            diff_y = points_y.reshape((-1,1)) - points_y.reshape((-1,1)).T
+
+            # periodization
+            diff_x -= Ls*np.round(diff_x/Ls)
+            diff_y -= Ls*np.round(diff_y/Ls)
+
+            # computing the distance
+            dist = np.sqrt(np.square(diff_x) + np.square(diff_y))
+            # the diagonal will be zero, so we add a diagonal to properly 
+            # comput the minimal distance
+            dist += 10*np.eye(Ncells**2*Np)
 
 
         points_array[i, :, 0] = x_grid[idx_point_x.reshape((-1,)), 0]
