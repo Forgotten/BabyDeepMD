@@ -200,7 +200,7 @@ def genDataYukawa2DPer(Ncells, Np, sigma, Nsamples, minDelta = 0.0, Lcell = 0.0)
             points_x = x_grid[idx_point_x, 0]
             points_y = y_grid[0, idx_point_y]
 
-            dist = min_distance(points_x, points_y, L)
+            dist = min_distance(points_x, points_y, Ls)
 
 
         points_array[i, :, 0] = x_grid[idx_point_x.reshape((-1,)), 0]
