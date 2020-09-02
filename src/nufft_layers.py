@@ -15,7 +15,7 @@ def gaussianDeconv2D(kx, ky, tau):
 
 @tf.function 
 def gaussianDeconv3D(kx, ky, kz, tau):
-  return sqrt(np.pi/tau)**3*tf.exp((  tf.square(kx) \
+  return tf.sqrt(np.pi/tau)**3*tf.exp((  tf.square(kx) \
                                     + tf.square(ky) \
                                     + tf.square(kz))*tau)
 
@@ -458,19 +458,19 @@ class NUFFTLayerMultiChannel3D(tf.keras.layers.Layer):
     # we need to add an iterpolation step
     # this needs to be perodic distance!!!
     # (batch_size, Np*Ncells, 2)
-    diffx  = tf.expand_dims(tf.expand_dims(input[:,:,0], -1), -1) \
+    diffx  = tf.expand_dims(tf.expand_dims(input[:,:,0:1], -1), -1) \
            - tf.reshape(self.x_grid, (1,1, 
                                       self.NpointsMesh, 
                                       self.NpointsMesh, 
                                       self.NpointsMesh))
 
-    diffy  = tf.expand_dims(tf.expand_dims(input[:,:,1], -1), -1) \
+    diffy  = tf.expand_dims(tf.expand_dims(input[:,:,1:2], -1), -1) \
            - tf.reshape(self.y_grid, (1,1, 
                                       self.NpointsMesh, 
                                       self.NpointsMesh, 
                                       self.NpointsMesh))
 
-    diffz  = tf.expand_dims(tf.expand_dims(input[:,:,2], -1), -1) \
+    diffz  = tf.expand_dims(tf.expand_dims(input[:,:,2:], -1), -1) \
            - tf.reshape(self.z_grid, (1,1, 
                                       self.NpointsMesh, 
                                       self.NpointsMesh, 
