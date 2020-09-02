@@ -176,7 +176,7 @@ def genDataYukawa2DPer(Ncells, Np, sigma, Nsamples, minDelta = 0.0, Lcell = 0.0)
     for i in range(Nsamples):
 
         # just starting distance 
-        dist = [10.0, 10.0]
+        dist = 0.0
 
         idx_point_x = idx_start_x.reshape((Ncells, Ncells, 1)) \
                       + np.random.choice(idx_cell_x.reshape((-1,)), 
@@ -187,7 +187,7 @@ def genDataYukawa2DPer(Ncells, Np, sigma, Nsamples, minDelta = 0.0, Lcell = 0.0)
                                          [Ncells, Ncells, Np])
 
 
-        while np.min(dist) < minDelta:
+        while dist < minDelta:
 
             idx_point_x = idx_start_x.reshape((Ncells, Ncells, 1)) \
                       + np.random.choice(idx_cell_x.reshape((-1,)), 
@@ -200,20 +200,7 @@ def genDataYukawa2DPer(Ncells, Np, sigma, Nsamples, minDelta = 0.0, Lcell = 0.0)
             points_x = x_grid[idx_point_x, 0]
             points_y = y_grid[0, idx_point_y]
 
-            # we compute the periodic distance
-
-            diff_x = points_x.reshape((-1,1)) - points_x.reshape((-1,1)).T
-            diff_y = points_y.reshape((-1,1)) - points_y.reshape((-1,1)).T
-
-            # periodization
-            diff_x -= Ls*np.round(diff_x/Ls)
-            diff_y -= Ls*np.round(diff_y/Ls)
-
-            # computing the distance
-            dist = np.sqrt(np.square(diff_x) + np.square(diff_y))
-            # the diagonal will be zero, so we add a diagonal to properly 
-            # comput the minimal distance
-            dist += 10*np.eye(Ncells**2*Np)
+            dist = min_distance(points_x, points_y, L)
 
 
         points_array[i, :, 0] = x_grid[idx_point_x.reshape((-1,)), 0]
@@ -249,6 +236,23 @@ def genDataYukawa2DPer(Ncells, Np, sigma, Nsamples, minDelta = 0.0, Lcell = 0.0)
         forces_array[i,:,1] = Forcesy.T
 
     return points_array, potential_array, forces_array
+
+
+
+def min_distance(x, y, L):
+    x_vec = x.reshape((-1,1))
+    y_vec = y.reshape((-1,1))
+
+    diff_x = x_vec - x_vec.T
+    diff_y = y_vec - y_vec.T
+
+    diff_per_x = diff_x - L*np.round(diff_x/L)
+    diff_per_y = diff_y - L*np.round(diff_y/L)
+
+    dist = np.sqrt(np.square(diff_x) + np.square(diff_y))
+    dist_vec = dist.reshape((-1,1))
+
+    return np.min(dist_vec[dist_vec>0])
 
 
 
