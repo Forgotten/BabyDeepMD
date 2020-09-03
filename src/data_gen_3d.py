@@ -72,9 +72,11 @@ def genDataPer3D(Ncells, Np, mu, Nsamples, minDelta = 0.0, Lcell = 0.0):
         while np.min( distPoints[distPoints>0] ) < minDelta:
             points = midPoints + sizeCell*(np.random.rand(Ncells, Ncells, 
                                                           Ncells, Np, 3)-0.5)
-            distPoints = np.sqrt(np.sum(
-                         np.square( np.reshape(points, (-1, 1, 3)) 
-                                   -np.reshape(points, (1, -1, 3))), axis=-1))
+            relPoints = np.reshape(points, (-1,1,3)) -np.reshape(points, (1,-1,3))
+    
+            relPointsPer = relPoints - L*np.round(relPoints/L)
+            distPoints = np.sqrt(np.sum(np.square(relPointsPer), axis=-1))
+
 
         pointsArray[i, :, :] = np.reshape(points,(Np*Ncells**3, 3))
         points  = np.reshape(points, (Np*Ncells**3, 1, 3))
