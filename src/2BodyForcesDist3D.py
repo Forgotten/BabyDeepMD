@@ -152,7 +152,7 @@ Rinnumpy = Rin.numpy()
 Idx = computInterList2DOpt(Rinnumpy, L,  radious, maxNumNeighs)
 # dimension are (Nsamples, Npoints and MaxNumneighs)
 neighList = tf.Variable(Idx)
-Npoints = Np*Ncells**2
+Npoints = Np*Ncells**3
 
 
 gen_coordinates = genDistInvPerNlistVec3D(Rin, neighList, L)

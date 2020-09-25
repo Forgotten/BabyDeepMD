@@ -64,7 +64,7 @@ maxNumNeighs = data["maxNumNeighbors"]
 radious = data["radious"]
 
 # hard coded parameters for the NUFFT
-NpointsFourier = 101
+NpointsFourier = 51
 fftChannels = 2
 
 # Limits of the super cell
@@ -322,7 +322,17 @@ model = DeepMDsimpleEnergyNUFFT(Npoints, L, maxNumNeighs,
 
 # quick run of the model to check that it is correct.
 # we use a small set 
-E, F = model(Rin, neigh_list)
+
+# we only consider the first 2
+Rin2 = Rinput[:2,:,:] 
+Rinnumpy = Rin2.numpy()
+
+Idx = computInterList2DOpt(Rinnumpy, L,  radious, maxNumNeighs)
+# dimension are (Nsamples, Npoints and MaxNumneighs)
+neigh_list2 = tf.Variable(Idx)
+
+
+E, F = model(Rin2, neigh_list2)
 model.summary()
 
 # Create checkpointing directory if necessary
@@ -436,7 +446,26 @@ for cycle, (epochs, batchSizeL) in enumerate(zip(Nepochs, batchSizeArray)):
   print("saving the weights")
   model.save_weights(checkFile+"_cycle_"+str(cycle)+".h5")
 
-  pot_pred, force_pred = model(rin_test, neigh_list_test)
+  # computing the test error using batches
 
-  err = tf.sqrt(tf.reduce_sum(tf.square(force_pred - forces_test)))/tf.sqrt(tf.reduce_sum(tf.square(forces_test)))
-  print("Relative Error in the forces is " +str(err.numpy()))
+  x_test = (points_test, potential_test, forces_test)
+
+  test_dataset = tf.data.Dataset.from_tensor_slices(x_test)
+  test_dataset = test_dataset.shuffle(buffer_size=10000).batch(batchSizeL)
+
+  err = tf.Variable(0.0, dtype=tf.float32)
+  norm = tf.Variable(0.0, dtype=tf.float32)
+
+  for step, x_batch_test in enumerate(test_dataset):
+
+    Rinnumpy = x_batch_test[0].numpy()
+    Idx = computInterList2DOpt(Rinnumpy, L,  radious, maxNumNeighs)
+    neigh_list_test = tf.Variable(Idx)
+
+    pot_pred, force_pred = model(x_batch_test[0], neigh_list_test)
+
+    err.assign_add(tf.reduce_sum(tf.square(force_pred - x_batch_test[2])))
+    norm.assign_add(tf.reduce_sum(tf.square(x_batch_test[2])))
+
+  errTotal = tf.sqrt(err)/tf.sqrt(norm)
+  print("Relative Error in the forces is " +str(errTotal.numpy()))
