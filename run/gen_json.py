@@ -23,7 +23,7 @@ for nsample in Nsamples:
 
     filew.write("\"Nsamples\":          %d,\n"%(nsample))   
     filew.write("\"weight1\":           %.1f,\n"%(alpha1))
-    filew.write("\"weight2\":           %.1f,\n"%(alpha2))    
+    filew.write("\"weight2\":           %.1f \n"%(alpha2))    
 
     filew.write("}")
 
