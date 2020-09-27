@@ -309,6 +309,8 @@ forcesTest  = genDataYukawaPer(Ncells, Np, mu, 100, minDelta, Lcell)
 
 # forcesTestRscl =  forcesTest- forcesMean
 # forcesTestRscl = forcesTestRscl/forcesStd
+forcesTestRscl = forcesTest
+
 
 # computing the neighbors lists
 Idx = computInterList(pointsTest, L,  radious, maxNumNeighs)
