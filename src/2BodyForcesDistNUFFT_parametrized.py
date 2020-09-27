@@ -136,9 +136,10 @@ else:
 print("mean of the forces is %.8f"%(forcesMean))
 print("std of the forces is %.8f"%(forcesStd))
 
-potentialArray /= forcesStd
-forcesArray -= forcesMean
-forcesArray /= forcesStd
+##### No normalization
+# potentialArray /= forcesStd
+# forcesArray -= forcesMean
+# forcesArray /= forcesStd
 
 # positions of the 
 Rinput = tf.Variable(pointsArray, name="input", dtype = tf.float32)
@@ -306,8 +307,8 @@ pointsTest, \
 potentialTest, \
 forcesTest  = genDataYukawaPer(Ncells, Np, mu, 100, minDelta, Lcell)
 
-forcesTestRscl =  forcesTest- forcesMean
-forcesTestRscl = forcesTestRscl/forcesStd
+# forcesTestRscl =  forcesTest- forcesMean
+# forcesTestRscl = forcesTestRscl/forcesStd
 
 # computing the neighbors lists
 Idx = computInterList(pointsTest, L,  radious, maxNumNeighs)
