@@ -232,7 +232,7 @@ class DeepMDsimpleEnergy(tf.keras.Model):
     
     # Long range interactions
     self.NUFFTLayerEnergy1DParametrized = NUFFTLayerEnergy1DParametrized(self.fftChannels, \
-      self.NpointsFourier, self.xLims, self.mu, self.mu*10)
+      self.NpointsFourier, self.xLims, self.mu, self.mu/10)
 
     # descriptor for the long range interaction
     self.layerPyramidLongRange  = pyramidLayer(descripDim, 
