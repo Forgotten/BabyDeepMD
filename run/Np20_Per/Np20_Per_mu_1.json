@@ -16,7 +16,7 @@
     "epochsPerStair":    10,
     "batchSize":         8,
     "numberEpoch" :      1000,
-    "learningRate" :     0.0001,
+    "learningRate" :     0.001,
     "decayRate" :        0.95,
     "weightE":          [0.0, 1.0],
     "weightF":          [10.0, 1.0],
