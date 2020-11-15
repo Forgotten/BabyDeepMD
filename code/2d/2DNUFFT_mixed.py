@@ -60,6 +60,7 @@ epochsPerStair = data["epochsPerStair"]  # decay step of learning rate
 learningRate = data["learningRate"]      # initial learning rate
 decayRate = data["decayRate"]            # decay rate of learning rate
 dataFolder = data["dataFolder"]          # data folder
+checkFolder = data["checkpointFolder"]   # checkpointer folder
 loadFile = data["loadFile"]              # load file
 Nepochs = data["numberEpoch"]            # epoch
 batchSizeArray = data["batchSize"]       # batchsize      
@@ -82,7 +83,6 @@ dataFile = dataFolder + "data_2D_"+ DataType + \
                         "_minDelta_%.4f"%(minDelta) + \
                         "_Nsamples_" + str(Nsamples) + ".h5"
 
-checkFolder  = "/"
 checkFile = checkFolder + "checkpoint_2D_" + \
                           "potential_"+ DataType + \
                           "_Ncells_" + str(Ncells) + \
